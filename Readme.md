@@ -93,6 +93,14 @@ Test if program exists in path. When it does not it [dies](#die)
 assertEqual() {} # 2 Args: <value> <expected>
 ```
 
+## assertDoesNotContain
+
+```bash
+assertDoesNotContain() {} # 2 Args: <string> <substring>
+```
+
+[dies](#die) if string contains substring
+
 # Network
 
 ## downloadFile

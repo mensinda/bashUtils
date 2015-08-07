@@ -82,3 +82,9 @@ assertEqual() {
   argsRequired 2 $#
   [[ "$1" != "$2" ]] && die_expected "$2" "$1"
 }
+
+assertDoesNotContain() {
+  argsRequired 2 $#
+  local t="${1//$2/}"
+  [[ "$1" != "$t" ]] && die "String '$1' must not contain '$2'"
+}
