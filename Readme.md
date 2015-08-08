@@ -9,10 +9,41 @@ NOTE: Some functions use global variables. Variable names starting with `__CLASS
 
 # Object Oriented BASH
 
-Example:
+## Example:
 
 ```bash
-class Vector # Start class definition
+# base.sh
+
+class Base
+  private:
+    -- var
+
+  protected:
+    :: print
+
+  public:
+    :: Base
+    :: ~Base
+ssalc
+
+Base::print() {
+  msg1 "Base: var: '$($1 . var)'"
+}
+
+Base::Base() {
+  msg1 "Constructing Base"
+  $1 . var "Hello World"
+}
+
+Base::~Base() {
+  msg1 "Destructing Base"
+}
+```
+
+```bash
+# vector.sh
+
+class Vector Base # Start class definition
   private:
     -- x
     -- y
@@ -29,9 +60,9 @@ ssalc        # End class definition
 Vector::Vector() {
   msg1 "Constructing $($1 classname)"
 
-  $1 . x $2 # Sets attr x to 0
-  $1 . y $3
-  $1 . z $4
+  $1 . x "$2" # Sets attr x to 0
+  $1 . y "$3"
+  $1 . z "$4"
 }
 
 Vector::~Vector() {
@@ -48,7 +79,13 @@ Vector::show() {
   msg2 "Y: $($1 . y)"
   msg2 "Z: $($1 . z)"
   $1 . privateFunc "Hello" "World" # Output: "PRIVATE echo: Hello World"
+  $1 . print # In Base class
+  # $1 . var # ERROR
 }
+```
+
+```bash
+# main.sh
 
 Vector vec1 5 5 6
 vec1 . show
