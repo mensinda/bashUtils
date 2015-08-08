@@ -1,3 +1,77 @@
+# bashUtils
+
+bashUtils is a collection of (more or less) useful functions.
+
+Sourcing the loader.sh script and running the `loadBashUtils` function will give you access to all functions described below.
+
+NOTE: Some functions use global variables. Variable names starting with `__CLASS` or `__INTERNAL` should be avoided
+
+
+# Object Oriented BASH
+
+Example:
+
+```bash
+class Vector # Start class definition
+  private:
+    -- x
+    -- y
+    -- z
+    :: privateFunc
+
+  public:
+    :: Vector  # Constructor
+    :: ~Vector # Destructor
+    :: show
+ssalc        # End class definition
+
+# $1 is always a 'pointer' to this
+Vector::Vector() {
+  msg1 "Constructing $($1 classname)"
+
+  $1 . x $2 # Sets attr x to 0
+  $1 . y $3
+  $1 . z $4
+}
+
+Vector::~Vector() {
+  msg1 "Destructing $($1 classname)"
+}
+
+Vector::privateFunc() {
+  msg1 "PRIVATE echo: ${@:2}"
+}
+
+Vector::show() {
+  msg1 "Vector '$($1 name)':"
+  msg2 "X: $($1 . x)"
+  msg2 "Y: $($1 . y)"
+  msg2 "Z: $($1 . z)"
+  $1 . privateFunc "Hello" "World" # Output: "PRIVATE echo: Hello World"
+}
+
+Vector vec1 5 5 6
+vec1 . show
+#vec1 . privateFunc # ERROR: privateFunc is private
+#vec1 . y 5         # ERROR: y is private
+vec1 destruct
+#vec1 . show        # Bash error: vec1: command not found
+```
+
+## Object operators
+
+|      Operator      |                         Description                          |
+|--------------------|--------------------------------------------------------------|
+| . [func] [options] | Calls [func] with [options]                                  |
+| . [attr]           | Prints value of [attr] to stdout                             |
+| . [attr] [value]   | Sets [attr] to [value]                                       |
+| name               | Prints the object name to stdout                             |
+| classname          | Prints the class name to stdout                              |
+| hasFunc [func]     | Returns 0 if class has the function [func]                   |
+| hasAttr [attr]     | Returns 0 if class has the attribute [attr]                  |
+| isVisible [a/f]    | Returns 0 if the attribute / function is *currently* visible |
+| destruct           | Destructs the object and runs the (optional) destructor      |
+
 # Logging
 
 |  Fuction  |            Description           |
@@ -39,22 +113,6 @@ Prints `num` times `char`
 ## die
 
 Prints [logging](#Loging) message `$*`, a backtrace and exits
-
-## die_badArg
-
-```bash
-die_badArg() # 1 Args: <badArg>
-```
-
-Prints a badArg error and [dies](#die)
-
-## die_parseError
-
-```bash
-die_parseError() {} # 1 Args: <filename>
-```
-
-Prints a parseError error and [dies](#die)
 
 ## die_expected
 
@@ -116,7 +174,7 @@ NOTE: this function [requires](#programRequired) wget
 
 # Config
 
-Conig options can be read and set vie the `CONFIG` array
+Config options can be read and set vie the `CONFIG` array
 
 ## addToConfig
 

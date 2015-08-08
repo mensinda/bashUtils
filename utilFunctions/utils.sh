@@ -3,8 +3,8 @@
 die() {
   error   "$@"
 
-  local i=0 trace temp max_line=0 max_func=0 max_file=0 line func file
-  typeset -A trace
+  local i=0 temp max_line=0 max_func=0 max_file=0 line func file
+  declare -A trace
   error "Backtrace:"
   while true; do
     temp="$(caller $i)"
@@ -35,16 +35,6 @@ die() {
   done
 
   exit 1
-}
-
-die_badArg() {
-  argsRequired 2 $#
-  die "'$2' is an invalid parameter for Function ${FUNCNAME[1]} (arg $1)"
-}
-
-die_parseError() {
-  argsRequired 1 $#
-  die "Function ${FUNCNAME[1]} failed to parse file '$2'"
 }
 
 die_expected() {
