@@ -78,9 +78,9 @@ __CLASS_createNewObject() {
       func="${1}::${I}"
       tmp="$(type -t "$func")" &> /dev/null
       [[ "$?" != 0 || "$tmp" != "function" ]] && die "Constructor of class '$I' is undefined or not a function"
-      "$func" "__CLASS_accessOBJprivate ${I} $2" "${@:3}"
+      "$func" "__CLASS_accessOBJprivate $1 $2 ${I}" "${@:3}"
     fi
   done
 
-  eval "$2() { __CLASS_accessOBJpublic $1 $2 \"\$@\"; }"
+  eval "$2() { __CLASS_accessOBJpublic $1 $2 $1 \"\$@\"; }"
 }

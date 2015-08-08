@@ -41,6 +41,7 @@ __CLASS_checkVisibility() {
 #  - 3: operator
 #  - 4: member
 #  - 5: current visibility
+#  - 6: current class
 __CLASS_accessOBJ() {
   [ -n "$__CLASS_CURRENT_CLASS" ] && die "Can not access objects inside class definitions! (forgot ssalc?)"
   (( $# < 5 )) && die "$FUNCNAME needs at least 4 arguments"
@@ -49,12 +50,12 @@ __CLASS_accessOBJ() {
 
   case "$3" in # operator
     .)
-      t="$(__CLASS_checkVisibility "$1" "$4" "$5")"
+      t="$(__CLASS_checkVisibility "$6" "$4" "$5")"
       (( $? != 0 )) && die "Can not access member '$4' of class '$1' (object: '$2')"
       case "${t:0:1}" in
         I)
-          if (( $# >= 6 )); then
-            eval "__CLASS_${1}_OBJECT_${2}[$4]='$6'"      # set
+          if (( $# >= 7 )); then
+            eval "__CLASS_${1}_OBJECT_${2}[$4]='$7'"       # set
           else
             eval "echo \${__CLASS_${1}_OBJECT_${2}[$4]}"   # get
           fi
@@ -66,7 +67,7 @@ __CLASS_accessOBJ() {
           func="${1}::${4}"
           tmp="$(type -t "$func")" &> /dev/null
           [[ "$?" != 0 || "$tmp" != "function" ]] && die "Member '$4' of class '$1' is undefined or not a function"
-          "$func" "__CLASS_accessOBJprivate ${t:1} $2" "${@:6}"
+          "$func" "__CLASS_accessOBJprivate $1 $2 ${t:1}" "${@:7}"
         ;;
 
         *) die "Internal error: Unknown member type" ;;
@@ -83,7 +84,7 @@ __CLASS_accessOBJ() {
           func="${1}::~${I}"
           tmp="$(type -t "$func")" &> /dev/null
           [[ "$?" != 0 || "$tmp" != "function" ]] && die "Deconstructor of class '$I' is undefined or not a function"
-          "$func" "__CLASS_accessOBJprivate $I $2"
+          "$func" "__CLASS_accessOBJprivate $1 $2 $I"
         fi
       done
       unset "__CLASS_${1}_OBJECT_${2}"
@@ -101,7 +102,7 @@ __CLASS_accessOBJ() {
       ;;
 
     isVisible)
-      __CLASS_checkVisibility "$1" "$4" "$5" > /dev/null
+      __CLASS_checkVisibility "$6" "$4" "$5" > /dev/null
       return $?
       ;;
 
@@ -112,5 +113,5 @@ __CLASS_accessOBJ() {
 
 }
 
-__CLASS_accessOBJpublic()    { __CLASS_accessOBJ "$1" "$2" "$3" "$4" 'public'    "${@:5}"; }
-__CLASS_accessOBJprivate()   { __CLASS_accessOBJ "$1" "$2" "$3" "$4" 'private'   "${@:5}"; }
+__CLASS_accessOBJpublic()    { __CLASS_accessOBJ "$1" "$2" "$4" "$5" 'public'  "$3" "${@:6}"; }
+__CLASS_accessOBJprivate()   { __CLASS_accessOBJ "$1" "$2" "$4" "$5" 'private' "$3" "${@:6}"; }
