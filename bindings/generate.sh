@@ -195,7 +195,7 @@ EOF
 
     argProps["0:type"]="$returnType"
     argProps["0:pointer"]="$tmp"
-    [[ "$returnType" != 'void' ]] && argProps["0:opts"]="out"
+    [[ "$returnType" != 'void ' ]] && argProps["0:opts"]="out"
 
     echo -ne "\nint bbind_funcBind_$funcName( struct bindingCALL *_arg, struct bindingCALL *_ret );"  1>&6
     echo -e  "\nint bbind_funcBind_$funcName( struct bindingCALL *_arg, struct bindingCALL *_ret ) {"
@@ -262,7 +262,7 @@ EOF
           I="${I/#*:}"
           I="${I/%*( )}"
           [[ ! "${argProps[$I:opts]}" == *"in"* ]] && \
-            echo "#error \"'arg$I' has not the attribute in '${argProps[$I:opts]}'\""
+            echo "#error \"'arg$I' has not the attribute 'in' ('${argProps[$I:opts]}')\""
           echo "  arg$i = malloc( sizeof( ${argProps[$i:type]} ) * (${argProps[$I:pointer]}arg$I) );"
         fi
       fi
@@ -283,21 +283,29 @@ EOF
 
     for (( i = 0; i <= ${#argv[@]}; i++ )); do
       [[ "${argProps[$i:opts]}" != *"out"* ]] && continue
-      echo ''
-      echo '  ret = bbind_newCALL();'
+      [[ "${argProps[$i:type]}" == 'void ' ]] && continue
       I="${argProps[$i:opts]}"
+      I="${I/%*( )}"
       if   [[ "$I" == *":"* ]]; then
-        I="${I/#*!}"
-        I="${I/%*( )}"
+        I="${I/#*:}"
         I="arg$I"
       elif [[ "$I" == *"!"* ]]; then
         I="${I/#*!}"
-        I="${I/%*( )}"
         I="arg$I"
       else
         I=''
       fi
-      $1 . genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I"
+
+      if (( "${#argProps[$i:pointer]}" > 0 )); then
+        echo ''
+        echo '  ret = bbind_newCALL();'
+        $1 . genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" '' 'true'
+        echo '  ret = ret->next;'
+      fi
+
+      echo ''
+      echo '  ret = bbind_newCALL();'
+      $1 . genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I" 'false'
       echo '  ret = ret->next;'
     done
 

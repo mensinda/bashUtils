@@ -12,33 +12,77 @@ BASHBinding::genCastFromChar() {
     fi
   else
     for i in $2; do
-      if [[ "$i" == "char" ]]; then
-        echo -e "($2)*$4;"
-        return 0
-      fi
-
-      if [[ "$i" == "int" ]]; then
-        echo -e "($2)strtol( $4, NULL, 10 );"
-        return 0
-      fi
-
-      if [[ "$i" == "float" ]]; then
-        echo -e "($2)strtof( $4, NULL, 10 );"
-        return 0
-      fi
-
-      if [[ "$i" == "double" ]]; then
-        echo -e "($2)strtold( $4, NULL, 10 );"
-        return 0
-      fi
+      case "$i" in
+        char)   echo "($2)*$4;";                     return 0 ;;
+        int)    echo "($2)strtol( $4, NULL, 10 );";  return 0 ;;
+        float)  echo "($2)strtof( $4, NULL, 10 );";  return 0 ;;
+        double) echo "($2)strtold( $4, NULL, 10 );"; return 0 ;;
+      esac
     done
   fi
 }
 
 BASHBinding::genCast2Char() {
-  argsRequired 5 $#
-  local t="$2" ptr="$3" name="$4" size="$5"
-  echo "  // t: '$t'; ptr: '$ptr'; name: '$name'; size='$size'"
+  argsRequired 6 $#
+  local t="$2" ptr="$3" name="$4" size="$5" isPTR="$6"
+  local snprintfType i
+  echo "  // t: '$t'; ptr: '$ptr'; name: '$name'; size='$size'; isPTR: '$isPTR'"
+  if [[ "$isPTR" == 'true' ]]; then
+    echo '  ret->length = 0;'
+    echo "  ret->data   = ( char * )$name;"
+  else
+    snprintfType="i"
+    for i in $t; do
+      if [[ "$i" == 'char' ]]; then
+        # Chars and strings are easy
+        if [ -z "$size" ]; then
+          # single char
+          echo "  ret->length = sizeof( char );"
+          echo '  ret->data   = malloc( ret->length );'
+          echo "  *ret->data  = ${ptr}${name}"
+          return
+        else
+          # string
+          echo "  ret->length = sizeof( char ) * $size;"
+          echo '  ret->data   = malloc( ret->length );'
+          echo "  strcpy( ret->data, ${ptr/#\*}${name} );"
+          return
+        fi
+      fi
+      case "$i" in
+        unsigned) snprintfType="${snprintfType/%i}u" ;;
+        long)     snprintfType="l${snprintfType}"    ;;
+        short)    snprintfType="h${snprintfType}"    ;;
+        double)   snprintfType="${snprintfType/%i}f" ;;
+        float)    snprintfType="${snprintfType/%i}f" ;;
+        int) [[ "$snprintfType" != *"u" ]] && snprintfType="${snprintfType/%i}i" ;;
+      esac
+    done
+
+    if [ -z "$size" ]; then
+      echo "  ret->length = sizeof( char ) * snprintf( NULL, 0, \"%$snprintfType\", ${ptr}${name} ) + 1;"
+      echo '  ret->data   = malloc( ret->length );'
+      echo "  snprintf( ret->data, ret->length, \"%$snprintfType\", ${ptr}${name} );"
+    else
+      echo '  ret->length = 0;'
+      echo "  $t ${ptr}${name}_start = $name;"
+      echo ''
+      echo '  /* Calculate total size */'
+      echo "  for( int ${name}_i = 0; ${name}_i < $size; ${name}_i++ ) {"
+      echo "    ret->length += snprintf( NULL, 0, \"%$snprintfType \", ${ptr}${name} );"
+      echo "    $name += sizeof( $t );"
+      echo '  }'
+      echo '  ret->length += 1; /* \0 at the end */'
+      echo '  ret->data   = malloc( ret->length );'
+      echo ''
+      echo "  char *${name}_worker = ret->data;"
+      echo "  $name = ${name}_start;"
+      echo "  for( int ${name}_i = 0; ${name}_i < $size; ${name}_i++ ) {"
+      echo "    ${name}_worker += snprintf( ${name}_worker, ret->length - ( ${name}_worker - ret->data ), \"%$snprintfType \", ${ptr}${name} );"
+      echo "    $name += sizeof( $t );"
+      echo '  }'
+    fi
+  fi
 }
 
 BASHBinding::resolveTypedef() {

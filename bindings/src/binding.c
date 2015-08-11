@@ -45,7 +45,7 @@ void bbind_freeCALL( struct bindingCALL *_s ) {
   if ( _s == NULL )
     return;
 
-  if ( _s->data != NULL )
+  if ( _s->data != NULL && _s->length > 0 )
     free( _s->data );
 
   if ( _s->next != NULL )

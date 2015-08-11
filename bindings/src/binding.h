@@ -20,6 +20,9 @@ typedef int ( *bindingFunctionPTR )( struct bindingCALL *, struct bindingCALL * 
 struct bindingINFO *bbind_newINFO();
 struct bindingCALL *bbind_newCALL();
 
+void bbind_freeINFO( struct bindingINFO *_s );
+void bbind_freeCALL( struct bindingCALL *_s );
+
 int bbind_addFunction( struct bindingINFO *_inf,
                        bindingFunctionPTR ptr,
                        char const *_name,
