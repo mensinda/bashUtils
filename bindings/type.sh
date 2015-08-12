@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASHBinding::genCastFromChar() {
+BASHBinding::bbind_genCastFromChar() {
   argsRequired 4 $#
   local i
 
@@ -22,7 +22,7 @@ BASHBinding::genCastFromChar() {
   fi
 }
 
-BASHBinding::genCast2Char() {
+BASHBinding::bbind_genCast2Char() {
   argsRequired 6 $#
   local t="$2" ptr="$3" name="$4" size="$5" isPTR="$6"
   local snprintfType i
@@ -85,7 +85,7 @@ BASHBinding::genCast2Char() {
   fi
 }
 
-BASHBinding::resolveTypedef() {
+BASHBinding::bbind_resolveTypedef() {
   argsRequired 5 $#
   programRequired 'g++'
   local i name t typeOnly inclDirs

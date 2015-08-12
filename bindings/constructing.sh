@@ -18,6 +18,7 @@ BASHBinding::BASHBinding() {
   $1 . libPath   "$(readlink -f "$2")"
   $1 . fifoDir   "$(readlink -f "$3")"
   $1 . isStarted 'false'
+  $1 . isInit    'false'
 
   local i
   for i in {binding,shell}{CALL,RETURN}; do
@@ -33,9 +34,13 @@ BASHBinding::~BASHBinding() {
   dir="$($1 . fifoDir)"
   started="$($1 . isStarted)"
 
+  [[ "$started" == 'true' ]] && $1 . bbind_stop
+
   for i in {binding,shell}{CALL,RETURN}; do
     [ -e "$dir/$i" ] && rm "$dir/$i"
   done
+}
 
-  [[ "$started" == 'true' ]] && $1 . stop
+BASHBinding::bbind_getIsInit() {
+  $1 . isInit
 }

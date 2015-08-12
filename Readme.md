@@ -232,3 +232,22 @@ parseConfigFile() {} # 1 Args: <filenema>
 ```bash
 generateConfigFile() {} # 1 Args: <filenema>
 ```
+
+# Thread Sync
+
+Functions for thread synchronization. A thread can be locked with `FIFOwait` and unlocked from an other
+thread via `FIFOcontinue`.
+
+NOTE: those functions create temporary FIOS! Make sure you are using an empty directory to avoid collisions.
+
+## FIFOwait
+
+```bash
+FIFOwait() {} # 1 Args: <fifoname>
+```
+
+## FIFOcontinue
+
+```bash
+FIFOcontinue() {} # 1 Args: <fifoname>
+```

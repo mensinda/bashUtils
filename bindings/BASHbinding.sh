@@ -7,25 +7,29 @@ class BASHBinding
 
     -- isCompiled
     -- isStarted
+    -- isInit
 
     -- bindingThread
-    -- readReturnThread
-    -- readCallbackThread
+    -- bbind_readReturnThread
+    -- bbind_readCallbackThread
 
-    :: readReturn
-    :: readCallback
-    :: generateFiles
+    :: bbind_readReturn
+    :: bbind_readCallback
 
-    :: genCastFromChar
-    :: genCast2Char
+    :: bbind_generateFiles
+
+    :: bbind_genCastFromChar
+    :: bbind_genCast2Char
 
   public:
-    :: compileIfNeeded
+    :: bbind_compile
 
-    :: resolveTypedef
+    :: bbind_resolveTypedef
 
-    :: start
-    :: stop
+    :: bbind_start
+    :: bbind_stop
+
+    :: bbind_getIsInit
 
     :: BASHBinding
     :: ~BASHBinding

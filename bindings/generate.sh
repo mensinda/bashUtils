@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASHBinding::generateFiles() {
+BASHBinding::bbind_generateFiles() {
   argsRequired 2 $#
   fileRequired "$2" require
 
@@ -9,6 +9,7 @@ BASHBinding::generateFiles() {
   local inludeList
   local includeDirs=() subDirs=()
   local returnType funcName argList argList2 i I I_OLD tmp opts
+  local inCounter=0 outCounter=0
   declare -a argv
   declare -A argProps
 
@@ -75,6 +76,10 @@ BASHBinding::generateFiles() {
 ###
 
 cat << EOF > "$cmakeFile"
+#
+# WARNING: This is an automatically generated file!
+#
+
 cmake_minimum_required(VERSION 2.8.8)
 
 project( $(basename "$dir") )
@@ -92,6 +97,10 @@ echo "target_link_libraries( binding ${subDirs[*]} )" >> "$cmakeFile"
 
 
 cat << EOF > "$mainFile"
+/*
+ * WARNING: This is an automatically generated file!
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "bind.h"
@@ -110,7 +119,7 @@ int main( int argc, char const *argv[] ) {
     return 2;
   }
 
-  return bbind_end( inf );
+  return bbind_run( inf );
 }
 EOF
 
@@ -151,7 +160,7 @@ cat << EOF > "$tFile"
  */
 #include "bind.h"
 
-int bbind_initBindings( struct bindingINFO *_inf ) {
+void bbind_initBindings( struct bindingINFO *_inf ) {
 EOF
 
 ###    ______              _                __ _ _                 _     _           _ _
@@ -184,7 +193,7 @@ EOF
     found2 "Function '$funcName'" 1>&2
 
     [[ "$returnType" != 'void' ]] && \
-      returnType="$($1 . resolveTypedef "$returnType" "$inludeList" "$dir" "${includeDirs[*]}")"
+      returnType="$($1 . bbind_resolveTypedef "$returnType" "$inludeList" "$dir" "${includeDirs[*]}")"
     tmp="${returnType//[^*]/}"
 
     returnType="${returnType//const}" # removing consts
@@ -199,6 +208,7 @@ EOF
 
     echo -ne "\nint bbind_funcBind_$funcName( struct bindingCALL *_arg, struct bindingCALL *_ret );"  1>&6
     echo -e  "\nint bbind_funcBind_$funcName( struct bindingCALL *_arg, struct bindingCALL *_ret ) {"
+    echo -n  "  bbind_addFunction( _inf, &bbind_funcBind_$funcName, \"$funcName\", "                  1>&3
 
     for (( i = 0; i < ${#argv[@]}; )); do
       opts=''
@@ -212,7 +222,7 @@ EOF
       I="${I//|*|}"   # removing opts
       I_OLD="$I"
 
-      [[ "$I" != 'void' ]] && I="$($1 . resolveTypedef "$I" "$inludeList" "$dir" "${includeDirs[*]}")"
+      [[ "$I" != 'void' ]] && I="$($1 . bbind_resolveTypedef "$I" "$inludeList" "$dir" "${includeDirs[*]}")"
       tmp="${I//[^*]/}"
 
       I="${I//const}" # removing consts
@@ -227,12 +237,13 @@ EOF
       echo "  /* parameter $i; mata: '$opts' */"
 
       if [[ "$opts" == *"in"* ]]; then
+        (( inCounter++ ))
         echo '  if ( _arg == NULL ) {'
         echo '    printf( "binding: ERROR: func: $funcName _arg is NULL" );'
         echo '    return 1;'
         echo '  }'
         echo -n "  $I ${tmp}arg$i = "
-        $1 . genCastFromChar "$I" "$tmp" "_arg->data"
+        $1 . bbind_genCastFromChar "$I" "$tmp" "_arg->data"
         echo '  _arg = _arg->next;'
         echo ''
 
@@ -284,6 +295,7 @@ EOF
     for (( i = 0; i <= ${#argv[@]}; i++ )); do
       [[ "${argProps[$i:opts]}" != *"out"* ]] && continue
       [[ "${argProps[$i:type]}" == 'void ' ]] && continue
+      (( outCounter++ ))
       I="${argProps[$i:opts]}"
       I="${I/%*( )}"
       if   [[ "$I" == *":"* ]]; then
@@ -296,16 +308,16 @@ EOF
         I=''
       fi
 
-      if (( "${#argProps[$i:pointer]}" > 0 )); then
+      if (( "${#argProps[$i:pointer]}" > 0 && "${#I}" == 0 )); then
         echo ''
         echo '  ret = bbind_newCALL();'
-        $1 . genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" '' 'true'
+        $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" '' 'true'
         echo '  ret = ret->next;'
       fi
 
       echo ''
       echo '  ret = bbind_newCALL();'
-      $1 . genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I" 'false'
+      $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I" 'false'
       echo '  ret = ret->next;'
     done
 
@@ -319,17 +331,15 @@ EOF
       fi
     done
 
+    echo "$inCounter, $outCounter );" 1>&3
     echo -e "\n  return 0;\n}"
 
-  done < "$2" 1>> "$cFile" 4>> "$tFile" 5>> "$cmakeFile" 6>> "$hFile"
+    inCounter=0
+    outCounter=0
 
+  done < "$2" 1>> "$cFile" 3>> "$tFile" 6>> "$hFile"
 
-
-cat << EOF >> "$hFile"
-
-int bbind_initBindings( struct bindingINFO *_inf );
-
-#endif /* BIND_H */
-EOF
-  echo "}" >> "$tFile"
+  echo -e "\n\nvoid bbind_initBindings( struct bindingINFO *_inf );" >> "$hFile"
+  echo -e "\n#endif /* BIND_H */"                                    >> "$hFile"
+  echo "}"                                                           >> "$tFile"
 }

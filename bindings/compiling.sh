@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASHBinding::compileIfNeeded() {
+BASHBinding::bbind_compile() {
   argsRequired 1 $#
   programRequired 'cmake'
   programRequired 'make'
@@ -14,7 +14,7 @@ BASHBinding::compileIfNeeded() {
 
   if [ -f "$path/bind.def" ]; then
     found "Binding definition file '$path/bind.def'"
-    $1 . generateFiles "$path/bind.def"
+    $1 . bbind_generateFiles "$path/bind.def"
   fi
 
   [ -e "$path/build" ] && rm -rf "$path/build"
