@@ -8,7 +8,7 @@ BASHBinding::bbind_generateFiles() {
   local strINCLUDE strCMAKE
   local inludeList
   local includeDirs=() subDirs=()
-  local returnType funcName argList argList2 i I I_OLD tmp opts
+  local returnType funcName argList argList2 i I j I_OLD tmp opts
   local inCounter=0 outCounter=0
   declare -a argv
   declare -A argProps
@@ -244,6 +244,7 @@ EOF
         echo '  }'
         echo -n "  $I ${tmp}arg$i = "
         $1 . bbind_genCastFromChar "$I" "$tmp" "_arg->data"
+        echo "  struct bindingCALL *s_arg$i = _arg;"
         echo '  _arg = _arg->next;'
         echo ''
 
@@ -268,14 +269,30 @@ EOF
 
     for (( i = 0; i <= ${#argv[@]}; i++ )); do
       if [[ "${argProps[$i:opts]}" == *":"* ]]; then
-        if [[ "${argProps[$i:opts]}" != *"in"* ]]; then
-          I="${argProps[$i:opts]}"
-          I="${I/#*:}"
-          I="${I/%*( )}"
-          [[ ! "${argProps[$I:opts]}" == *"in"* ]] && \
-            echo "#error \"'arg$I' has not the attribute 'in' ('${argProps[$I:opts]}')\""
-          echo "  arg$i = malloc( sizeof( ${argProps[$i:type]} ) * (${argProps[$I:pointer]}arg$I) );"
-        fi
+        I="${argProps[$i:opts]}"
+        I="${I/#*:}"
+        I="${I/%*( )}"
+        [[ ! "${argProps[$I:opts]}" == *"in"* ]] && \
+          echo "#error \"'arg$I' has not the attribute 'in' ('${argProps[$I:opts]}')\""
+        echo "  arg$i = malloc( sizeof( ${argProps[$i:type]} ) * (${argProps[$I:pointer]}arg$I) );"
+      fi
+
+      if [[ "${argProps[$i:opts]}" == *"in"* ]]; then
+        (( "${#argProps[$i:pointer]}" == 0 )) && continue
+        # char (=string) is easy.
+        for j in ${argProps[$i:type]}; do
+          if [[ "$j" == 'char' ]]; then
+            if [[ "${argProps[$i:opts]}" == *":"* ]]; then
+              I="${argProps[$i:opts]}"
+              I="${I/#*:}"
+              I="${I/%*( )}"
+              echo "  strncpy( arg$i, s_arg${i}->data, sizeof( ${argProps[$i:type]} ) * (${argProps[$I:pointer]}arg$I) );"
+            fi
+            j='-1'
+            break
+          fi
+        done
+        [[ "$j" == '-1' ]] && continue
       fi
     done
 

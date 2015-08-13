@@ -26,7 +26,7 @@ BASHBinding::bbind_genCast2Char() {
   argsRequired 6 $#
   local t="$2" ptr="$3" name="$4" size="$5" isPTR="$6"
   local snprintfType i
-  echo "  // t: '$t'; ptr: '$ptr'; name: '$name'; size='$size'; isPTR: '$isPTR'"
+  echo "  /* t: '$t'; ptr: '$ptr'; name: '$name'; size='$size'; isPTR: '$isPTR' */"
   if [[ "$isPTR" == 'true' ]]; then
     echo '  ret->length = 0;'
     echo "  ret->data   = ( char * )$name;"
