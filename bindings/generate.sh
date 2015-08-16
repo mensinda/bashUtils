@@ -234,21 +234,61 @@ EOF
       [ -z "$opts" ] && opts='in'
       [[ "$opts" == *"DUMMY"* && "$opts" != *"in"* && "$opts" != *"out"* ]] && opts="$opts in"
 
-      echo "  /* parameter $i; mata: '$opts' */"
+      echo ''
+      echo "  /* parameter $i; type: '$I'; ptr: '$tmp'; mata: '$opts' */"
 
+      ##
+      ## IN
+      ##
       if [[ "$opts" == *"in"* ]]; then
         (( inCounter++ ))
         echo '  if ( _arg == NULL ) {'
         echo '    printf( "binding: ERROR: func: $funcName _arg is NULL" );'
         echo '    return 1;'
         echo '  }'
-        echo -n "  $I ${tmp}arg$i = "
-        $1 . bbind_genCastFromChar "$I" "$tmp" "_arg->data"
         echo "  struct bindingCALL *s_arg$i = _arg;"
+        echo ''
+        j=0
+
+        # 'char *' is special
+        if [[ "$opts" != *"!"* && "$opts" != *":"* && "${#tmp}" == '1' ]]; then
+          for j in $I; do
+            if [[ "$j" == 'char' ]]; then
+              echo "  $I ${tmp}arg$i = ($I ${tmp})_arg->data;"
+              j=-1
+              break
+            fi
+          done
+        fi
+
+        # No strings (int, etc)
+        if (( ${#tmp} > 0 && j == 0 )); then
+          echo "  $I ${tmp}arg$i;"
+          echo "  if ( _arg->isPTR == '1' ) {"
+          echo -n "    arg$i = "
+          $1 . bbind_genCastFromChar "$I" "$tmp" "_arg->data"
+          echo -n '  }'
+          if [[ "$opts" == *"!"* || "$opts" == *":"* ]]; then
+            echo ''
+          else
+            echo ' else {'
+            echo -n "    ${tmp}arg$i = "
+            $1 . bbind_genCastFromChar "$I" "" "_arg->data"
+            echo '  }'
+          fi
+          echo ''
+        elif (( j == 0 )); then
+          echo -n "  $I ${tmp}arg$i = "
+          $1 . bbind_genCastFromChar "$I" "$tmp" "_arg->data"
+        fi
         echo '  _arg = _arg->next;'
         echo ''
 
         [[ "$opts" != *"DUMMY"* ]] && argList2="$argList2 arg${i},"
+
+      ##
+      ## OUT
+      ##
       elif [[ "$opts" == *"out"* ]]; then
         if [[ "$opts" == *"!"* ]]; then
           tmp="${tmp/#\*}"
@@ -267,36 +307,95 @@ EOF
       argProps["$i:opts"]="${opts}"
     done
 
+
+
+
     for (( i = 0; i <= ${#argv[@]}; i++ )); do
-      if [[ "${argProps[$i:opts]}" == *":"* ]]; then
-        I="${argProps[$i:opts]}"
-        I="${I/#*:}"
-        I="${I/%*( )}"
-        [[ ! "${argProps[$I:opts]}" == *"in"* ]] && \
-          echo "#error \"'arg$I' has not the attribute 'in' ('${argProps[$I:opts]}')\""
-        echo "  arg$i = malloc( sizeof( ${argProps[$i:type]} ) * (${argProps[$I:pointer]}arg$I) );"
+      echo ''
+      echo "  /* Setting arg$i */"
+      if [[ "${argProps[$i:opts]}" != *":"* ]]; then
+        echo '  /*  -- Nothing to do */'
+        continue
       fi
 
+      I="${argProps[$i:opts]}"
+      I="${I/#*:}"
+      I="${I/%*( )}"
+
       if [[ "${argProps[$i:opts]}" == *"in"* ]]; then
-        (( "${#argProps[$i:pointer]}" == 0 )) && continue
+        echo "  if ( s_arg$i->isPTR == '0' ) {"
+        [[ ! "${argProps[$I:opts]}" == *"in"* ]] && \
+          echo "#error \"'arg$I' has not the attribute 'in' ('${argProps[$I:opts]}')\""
+        echo "    /*  -- allocating memory based on arg$I */"
+        echo "    arg$i = malloc( sizeof( ${argProps[$i:type]} ) * (${argProps[$I:pointer]}arg$I) );"
+
         # char (=string) is easy.
         for j in ${argProps[$i:type]}; do
           if [[ "$j" == 'char' ]]; then
-            if [[ "${argProps[$i:opts]}" == *":"* ]]; then
-              I="${argProps[$i:opts]}"
-              I="${I/#*:}"
-              I="${I/%*( )}"
-              echo "  strncpy( arg$i, s_arg${i}->data, sizeof( ${argProps[$i:type]} ) * (${argProps[$I:pointer]}arg$I) );"
-            fi
+            echo '    /*  -- Copying string */'
+            echo "    strncpy( arg$i, s_arg${i}->data, sizeof( ${argProps[$i:type]} ) * (${argProps[$I:pointer]}arg$I) );"
             j='-1'
             break
           fi
         done
         [[ "$j" == '-1' ]] && continue
+
+        echo "    /*  -- Filling non char array */"
+        echo "    char   b_arg$i[64]; /* buffer */"
+        echo "    size_t c_arg$i = 0; /* counter buffer */"
+        echo "    size_t C_arg$i = 0; /* counter elemets */"
+        echo "    while ( _arg->data != '\0' ) {"
+        echo "      if ( c_arg${i} == 64 ) {"
+        echo "        printf( \"binding: ERROR: internal buffer to small! (func: $funcName; arg$i)\" );"
+        echo "        return 2;"
+        echo '      }'
+        echo ''
+        echo "      if ( *_arg->data == ' ' || *_arg->data == '\n' || *_arg->data == '\t' ) {"
+        echo "        if ( c_arg$i == 0 ) continue;"
+        echo "        if ( C_arg$i >= arg$I ) {"
+        echo "          printf ( \"binding: ERROR: arg$i: array size (%lu) does not match the number of elements.\", arg$I );"
+        echo "          return 3;"
+        echo '        }'
+        echo ''
+        echo "        b_arg${i}[c_arg${i}] = '\0';"
+        echo -n "        arg$i[C_arg$i] = "
+        $1 . bbind_genCastFromChar "${argProps[$i:type]}" "" "b_arg${i}"
+        echo ''
+        echo "        b_arg$i[c_arg${i}] = *_arg->data;"
+        echo "        c_arg$i = 0;"
+        echo "        C_arg$i++;"
+        echo '      } else {'
+        echo "        b_arg${i}[c_arg${i}] = *_arg->data;"
+        echo "        c_arg${i}++;"
+        echo '      }'
+        echo '      _arg->data++;'
+        echo '    }'
+        echo "    if ( c_arg$i != 0 ) {"
+        echo "      if ( C_arg$i >= arg$I ) {"
+        echo "        printf ( \"binding: ERROR: arg$i: array size (%lu) does not match the number of elements.\", arg$I );"
+        echo "        return 3;"
+        echo '      }'
+        echo ''
+        echo "      b_arg$i[c_arg$i] = '\0';"
+        echo -n "      arg$i[C_arg$i] = "
+        $1 . bbind_genCastFromChar "${argProps[$i:type]}" "" "b_arg${i}"
+        echo "      C_arg$i++;"
+        echo '    }'
+        echo "    if ( C_arg$i != ( arg$I - 1 ) ) {"
+        echo "      printf ( \"binding: ERROR: arg$i: array size (%lu) does not match the number of elements.\", arg$I );"
+        echo "      return 3;"
+        echo '    }'
+        echo '  }'
+      else
+        [[ ! "${argProps[$I:opts]}" == *"in"* ]] && \
+          echo "#error \"'arg$I' has not the attribute 'in' ('${argProps[$I:opts]}')\""
+        echo "  /*  -- allocating memory based on arg$I */"
+        echo "  arg$i = malloc( sizeof( ${argProps[$i:type]} ) * (${argProps[$I:pointer]}arg$I) );"
       fi
     done
 
     echo ''
+    echo "  /* Calling function '$funcName' */"
 
     argList2="${argList2/%,}"
     if [[ "$returnType" != 'void ' ]]; then
@@ -304,6 +403,15 @@ EOF
     else
       echo "  $funcName($argList2 );"
     fi
+
+###    ______     _                      _
+###    | ___ \   | |                    | |
+###    | |_/ /___| |_ _   _ _ __ _ __   | |_ _   _ _ __   ___  ___
+###    |    // _ \ __| | | | '__| '_ \  | __| | | | '_ \ / _ \/ __|
+###    | |\ \  __/ |_| |_| | |  | | | | | |_| |_| | |_) |  __/\__ \
+###    \_| \_\___|\__|\__,_|_|  |_| |_|  \__|\__, | .__/ \___||___/
+###                                           __/ | |
+###                                          |___/|_|
 
     echo ''
     echo '  struct bindingCALL *ret = _ret;'
@@ -329,12 +437,14 @@ EOF
         echo ''
         echo '  ret = bbind_newCALL();'
         $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" '' 'true'
+        echo "  ret->isPTR = '1';"
         echo '  ret = ret->next;'
       fi
 
       echo ''
       echo '  ret = bbind_newCALL();'
       $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I" 'false'
+      echo "  ret->isPTR = '0';"
       echo '  ret = ret->next;'
     done
 

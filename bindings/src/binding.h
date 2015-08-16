@@ -9,6 +9,8 @@ struct bindingCALL {
   size_t length;
   char *data;
 
+  char isPTR;
+
   struct bindingCALL *next;
 };
 
