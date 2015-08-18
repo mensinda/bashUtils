@@ -79,7 +79,7 @@ BASHBinding::bbind_sendCALL() {
     out="${data:0:$mSize}"
     data="${data:$mSize}"
 
-    [[ "$isPTR" == '1' ]] && out=$"\x01PTR$out"
+    [[ "$isPTR" == '1' ]] && out="$(echo -en "\x01PTR$out")"
 
     eval "OUT_$counter='$out'"
     (( counter++ ))

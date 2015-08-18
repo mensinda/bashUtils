@@ -39,7 +39,8 @@ BASHBinding::bbind_start() {
         call=\"${fIndex}|\${#id};\$id\"
         for i in \"\${@:2}\"; do
           if [[ \"\$i\" =~ ^$'\x01PTR'[0-9]+$ ]]; then
-            call=\"\${call}1,\${#i}:\${i/#*PTR}\"
+            i=\"\${i/#*PTR}\"
+            call=\"\${call}1,\${#i}:\$i\"
           else
             call=\"\${call}0,\${#i}:\$i\"
           fi
