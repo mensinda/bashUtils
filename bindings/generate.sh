@@ -103,6 +103,7 @@ cat << EOF > "$mainFile"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "bind.h"
 
 int main( int argc, char const *argv[] ) {
@@ -119,7 +120,8 @@ int main( int argc, char const *argv[] ) {
     return 2;
   }
 
-  return bbind_run( inf );
+  bbind_run( inf );
+  pthread_exit( NULL );
 }
 EOF
 
@@ -206,8 +208,8 @@ EOF
     argProps["0:pointer"]="$tmp"
     [[ "$returnType" != 'void ' ]] && argProps["0:opts"]="out"
 
-    echo -ne "\nint bbind_funcBind_$funcName( struct bindingCALL *_arg, struct bindingCALL *_ret );"  1>&6
-    echo -e  "\nint bbind_funcBind_$funcName( struct bindingCALL *_arg, struct bindingCALL *_ret ) {"
+    echo -ne "\nint bbind_funcBind_$funcName( struct bindingCALL *_arg, struct bindingCALL **_ret );"  1>&6
+    echo -e  "\nint bbind_funcBind_$funcName( struct bindingCALL *_arg, struct bindingCALL **_ret ) {"
     echo -n  "  bbind_addFunction( _inf, &bbind_funcBind_$funcName, \"$funcName\", "                  1>&3
 
     for (( i = 0; i < ${#argv[@]}; )); do
@@ -243,7 +245,7 @@ EOF
       if [[ "$opts" == *"in"* ]]; then
         (( inCounter++ ))
         echo '  if ( _arg == NULL ) {'
-        echo '    printf( "binding: ERROR: func: $funcName _arg is NULL" );'
+        echo '    printf( "binding: ERROR: func: $funcName _arg is NULL\n" );'
         echo '    return 1;'
         echo '  }'
         echo "  struct bindingCALL *s_arg$i = _arg;"
@@ -341,19 +343,20 @@ EOF
         [[ "$j" == '-1' ]] && continue
 
         echo "    /*  -- Filling non char array */"
-        echo "    char   b_arg$i[64]; /* buffer */"
+        echo "    char   b_arg$i[25]; /* buffer */"
         echo "    size_t c_arg$i = 0; /* counter buffer */"
         echo "    size_t C_arg$i = 0; /* counter elemets */"
-        echo "    while ( _arg->data != '\0' ) {"
-        echo "      if ( c_arg${i} == 64 ) {"
-        echo "        printf( \"binding: ERROR: internal buffer to small! (func: $funcName; arg$i)\" );"
+        echo "    char *worker$i = s_arg$i->data;"
+        echo "    while ( *worker$i != '\0' ) {"
+        echo "      if ( c_arg${i} >= 24 ) {"
+        echo "        printf( \"binding: ERROR: internal buffer to small! (func: $funcName; arg$i)\n\" );"
         echo "        return 2;"
         echo '      }'
         echo ''
-        echo "      if ( *_arg->data == ' ' || *_arg->data == '\n' || *_arg->data == '\t' ) {"
+        echo "      if ( *worker$i == ' ' || *worker$i == '\n' || *worker$i == '\t' ) {"
         echo "        if ( c_arg$i == 0 ) continue;"
         echo "        if ( C_arg$i >= arg$I ) {"
-        echo "          printf ( \"binding: ERROR: arg$i: array size (%lu) does not match the number of elements.\", arg$I );"
+        echo "          printf ( \"binding: ERROR: arg$i: 1: array size (%lu) does not match the number of elements (%lu).\n\", arg$I, C_arg$i );"
         echo "          return 3;"
         echo '        }'
         echo ''
@@ -361,18 +364,19 @@ EOF
         echo -n "        arg$i[C_arg$i] = "
         $1 . bbind_genCastFromChar "${argProps[$i:type]}" "" "b_arg${i}"
         echo ''
-        echo "        b_arg$i[c_arg${i}] = *_arg->data;"
+        echo "        b_arg$i[c_arg${i}] = *worker$i;"
         echo "        c_arg$i = 0;"
         echo "        C_arg$i++;"
         echo '      } else {'
-        echo "        b_arg${i}[c_arg${i}] = *_arg->data;"
+        echo "        b_arg${i}[c_arg${i}] = *worker$i;"
         echo "        c_arg${i}++;"
         echo '      }'
-        echo '      _arg->data++;'
+        echo "      worker$i++;"
         echo '    }'
+        echo ''
         echo "    if ( c_arg$i != 0 ) {"
         echo "      if ( C_arg$i >= arg$I ) {"
-        echo "        printf ( \"binding: ERROR: arg$i: array size (%lu) does not match the number of elements.\", arg$I );"
+        echo "        printf ( \"binding: ERROR: arg$i: 2: array size (%lu) does not match the number of elements (%lu).\n\", arg$I, C_arg$i );"
         echo "        return 3;"
         echo '      }'
         echo ''
@@ -381,8 +385,8 @@ EOF
         $1 . bbind_genCastFromChar "${argProps[$i:type]}" "" "b_arg${i}"
         echo "      C_arg$i++;"
         echo '    }'
-        echo "    if ( C_arg$i != ( arg$I - 1 ) ) {"
-        echo "      printf ( \"binding: ERROR: arg$i: array size (%lu) does not match the number of elements.\", arg$I );"
+        echo "    if ( C_arg$i != arg$I ) {"
+        echo "      printf ( \"binding: ERROR: arg$i: 3: array size (%lu) does not match the number of elements (%lu).\n\", arg$I, C_arg$i );"
         echo "      return 3;"
         echo '    }'
         echo '  }'
@@ -414,7 +418,8 @@ EOF
 ###                                          |___/|_|
 
     echo ''
-    echo '  struct bindingCALL *ret = _ret;'
+    echo '  struct bindingCALL **retP = _ret;'
+    echo '  struct bindingCALL *ret   = NULL;'
     echo ''
 
     for (( i = 0; i <= ${#argv[@]}; i++ )); do
@@ -435,17 +440,19 @@ EOF
 
       if (( "${#argProps[$i:pointer]}" > 0 && "${#I}" == 0 )); then
         echo ''
-        echo '  ret = bbind_newCALL();'
+        echo '  *retP = bbind_newCALL();'
+        echo '  ret = *retP;'
         $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" '' 'true'
         echo "  ret->isPTR = '1';"
-        echo '  ret = ret->next;'
+        echo '  retP = &ret->next;'
       fi
 
       echo ''
-      echo '  ret = bbind_newCALL();'
+      echo '  *retP = bbind_newCALL();'
+      echo '  ret = *retP;'
       $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I" 'false'
       echo "  ret->isPTR = '0';"
-      echo '  ret = ret->next;'
+      echo '  retP = &ret->next;'
     done
 
     echo ''

@@ -4,7 +4,7 @@ BASHBinding::bbind_start() {
   argsRequired 1 $#
   msg1 "Starting $($1 classname)"
   [[ "$($1 . isCompiled)" != 'true' ]] && die "Not compiled!"
-  local fifoDir line IN className
+  local fifoDir line fIn fIndex fName className
   fifoDir="$($1 . fifoDir)"
   className="$($1 classname)"
 
@@ -24,13 +24,27 @@ BASHBinding::bbind_start() {
   [ ! -f "$fifoDir/tmp_func_def" ] && die "Unable to find temporary function definition file"
 
   while read line; do
-    IN="${line/#*:}"
-    IN="${IN/%,*}"
-    (( IN++ ))
+    fIn="${line/#*:}"
+    fIn="${fIn/%,*}"
+    fName="${line/%#*}"
+    fIndex="${line/%:*}"
+    fIndex="${fIndex/#*#}"
+    (( fIn++ ))
     eval "
-      ${className}::${line/%:*}() {
-        argsRequired $IN \$#
-        msg1 \"TODO: Implement calling functions '${line/%:*}'\"
+      ${className}::$fName() {
+        argsRequired $fIn \$#
+        local id call i
+        id=\"\$(cat /dev/urandom | tr -dc '[:alnum:]' | fold -w 16 | head -n 1)\"
+        mkfifo \"$fifoDir/\$id\"
+        call=\"${fIndex}|\${#id};\$id\"
+        for i in \"\${@:2}\"; do
+          if [[ \"\$i\" =~ ^$'\x01PTR'[0-9]+$ ]]; then
+            call=\"\${call}1,\${#i}:\${i/#*PTR}\"
+          else
+            call=\"\${call}0,\${#i}:\$i\"
+          fi
+        done
+        \$1 . bbind_sendCALL \"$fifoDir/\$id\" \"C\${#call};\$call\"
       }
     "
   done < "$fifoDir/tmp_func_def"

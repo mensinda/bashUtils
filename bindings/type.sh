@@ -28,8 +28,9 @@ BASHBinding::bbind_genCast2Char() {
   local snprintfType i
   echo "  /* t: '$t'; ptr: '$ptr'; name: '$name'; size='$size'; isPTR: '$isPTR' */"
   if [[ "$isPTR" == 'true' ]]; then
-    echo '  ret->length = 0;'
-    echo "  ret->data   = ( char * )$name;"
+    echo "  ret->length = snprintf( NULL, 0, \"%lu\", (unsigned long int)$name );"
+    echo "  ret->data   = malloc( ret->length + 1 );"
+    echo "  snprintf( ret->data, ret->length + 1, \"%lu\", (unsigned long int)$name );"
   else
     snprintfType="i"
     for i in $t; do
@@ -60,9 +61,9 @@ BASHBinding::bbind_genCast2Char() {
     done
 
     if [ -z "$size" ]; then
-      echo "  ret->length = sizeof( char ) * snprintf( NULL, 0, \"%$snprintfType\", ${ptr}${name} ) + 1;"
-      echo '  ret->data   = malloc( ret->length );'
-      echo "  snprintf( ret->data, ret->length, \"%$snprintfType\", ${ptr}${name} );"
+      echo "  ret->length = snprintf( NULL, 0, \"%$snprintfType\", ${ptr}${name} );"
+      echo '  ret->data   = malloc( ret->length + 1 );'
+      echo "  snprintf( ret->data, ret->length + 1, \"%$snprintfType\", ${ptr}${name} );"
     else
       echo '  ret->length = 0;'
       echo "  $t ${ptr}${name}_start = $name;"
@@ -70,17 +71,17 @@ BASHBinding::bbind_genCast2Char() {
       echo '  /* Calculate total size */'
       echo "  for( int ${name}_i = 0; ${name}_i < $size; ${name}_i++ ) {"
       echo "    ret->length += snprintf( NULL, 0, \"%$snprintfType \", ${ptr}${name} );"
-      echo "    $name += sizeof( $t );"
+      echo "    ${name}++;"
       echo '  }'
-      echo '  ret->length += 1; /* \0 at the end */'
-      echo '  ret->data   = malloc( ret->length );'
+      echo '  ret->data   = malloc( ret->length + 1 );'
       echo ''
       echo "  char *${name}_worker = ret->data;"
       echo "  $name = ${name}_start;"
       echo "  for( int ${name}_i = 0; ${name}_i < $size; ${name}_i++ ) {"
-      echo "    ${name}_worker += snprintf( ${name}_worker, ret->length - ( ${name}_worker - ret->data ), \"%$snprintfType \", ${ptr}${name} );"
-      echo "    $name += sizeof( $t );"
+      echo "    ${name}_worker += snprintf( ${name}_worker, ret->length - ( ${name}_worker - ret->data ) + 1, \"%$snprintfType \", ${ptr}${name} );"
+      echo "    ${name}++;"
       echo '  }'
+      echo "  $name = ${name}_start;"
     fi
   fi
 }

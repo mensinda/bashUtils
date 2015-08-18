@@ -21,6 +21,9 @@ class BASHBinding
     :: bbind_genCastFromChar
     :: bbind_genCast2Char
 
+  protected:
+    :: bbind_sendCALL
+
   public:
     :: bbind_compile
 

@@ -1,4 +1,6 @@
 #include "binding.h"
+#include "tidVector.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +8,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <pthread.h>
+#include <limits.h>
 
 /*
  *    _____ _                   _
@@ -25,12 +27,14 @@ struct bindingINFO {
   FILE *sCall;
   FILE *sReturn;
 
+  struct tidVector *threads;
+
   size_t numFuncs;
 
   struct bindingFUNC *begin;
   struct bindingFUNC *end;
 
-  bindingFunctionPTR *funcs;
+  struct bindingFUNC **funcs;
 };
 
 struct bindingFUNC {
@@ -51,6 +55,8 @@ struct bindingINFO *bbind_newINFO() {
   s->bReturn = NULL;
   s->sCall = NULL;
   s->sReturn = NULL;
+
+  s->threads = tid_init();
 
   s->numFuncs = 0;
 
@@ -92,6 +98,9 @@ void bbind_freeINFO( struct bindingINFO *_s ) {
   if ( _s->funcs != NULL )
     free( _s->funcs );
 
+  if ( _s->threads != NULL )
+    tid_free( _s->threads );
+
   free( _s );
 }
 
@@ -112,7 +121,7 @@ void bbind_freeCALL( struct bindingCALL *_s ) {
   if ( _s == NULL )
     return;
 
-  if ( _s->data != NULL && _s->length > 0 )
+  if ( _s->data != NULL && _s->length > 0 && _s->isPTR != '1' )
     free( _s->data );
 
   if ( _s->next != NULL )
@@ -201,7 +210,7 @@ int bbind_init( struct bindingINFO *_inf, char const *_dir ) {
   ret += openFIFO( _dir, "w", "bindingRETURN", &_inf->bReturn );
   ret += openFIFO( _dir, "w", "shellCALL", &_inf->sCall );
 
-  _inf->funcs = malloc( sizeof( bindingFunctionPTR ) * _inf->numFuncs );
+  _inf->funcs = malloc( sizeof( struct bindingFUNC * ) * _inf->numFuncs );
   struct bindingFUNC *curr = _inf->begin;
 
   size_t s;
@@ -212,8 +221,8 @@ int bbind_init( struct bindingINFO *_inf, char const *_dir ) {
       return -1;
     }
 
-    s = snprintf( NULL, 0, "%s:%lu,%lu", curr->name, curr->in, curr->out );
-    fprintf( _inf->sCall, "I%lu;%s:%lu,%lu", s, curr->name, curr->in, curr->out );
+    s = snprintf( NULL, 0, "%s#%i:%lu,%lu", curr->name, i, curr->in, curr->out );
+    fprintf( _inf->sCall, "I%lu;%s#%i:%lu,%lu", s, curr->name, i, curr->in, curr->out );
     fflush( _inf->sCall );
 
     c = fgetc( _inf->sReturn );
@@ -222,7 +231,7 @@ int bbind_init( struct bindingINFO *_inf, char const *_dir ) {
       return -2;
     }
 
-    _inf->funcs[i] = curr->fPTR;
+    _inf->funcs[i] = curr;
 
     curr = curr->next;
   }
@@ -245,28 +254,162 @@ int bbind_init( struct bindingINFO *_inf, char const *_dir ) {
  */
 
 /*
- * Reads a char from _file and exists if EOF
+ * Call string format
+ * <fn INDEX>|<metadata size>;<metadata><arg1 isPTR>,<arg1 length>:<arg1>
  */
-int readChar( FILE *_file ) {
-  int c = fgetc( _file );
-  if ( c == EOF )
+void *processCALL( void *_d ) {
+  struct stringAndInfPtr *data = (struct stringAndInfPtr *)_d;
+  if ( data == NULL )
     pthread_exit( NULL );
 
-  return c;
+  unsigned long int fID, metadataSize, stringLength, argSize;
+  char isPTR;
+
+  stringLength = strlen( data->str );
+  char *worker = data->str;
+
+  worker = getNextNum( worker, '|', &fID );
+  worker = getNextNum( worker, ';', &metadataSize );
+
+  if ( worker == NULL ) {
+    printf( "binding: ERROR: Invalid call string\n" );
+    goto cleanup_partial;
+  }
+
+  if ( fID >= data->inf->numFuncs ) {
+    printf( "binding: ERROR: Invalid function index %lu\n", fID );
+    goto cleanup_partial;
+  }
+
+  if ( stringLength - ( worker - data->str ) < metadataSize ) {
+    printf( "binding: ERROR: Invalid metadata size %lu\n", metadataSize );
+    goto cleanup_partial;
+  }
+
+  char *metadata = malloc( ( metadataSize + 1 ) * sizeof( char ) );
+  memcpy( (void *)metadata, (void *)worker, metadataSize );
+  metadata[metadataSize] = '\0';
+  worker += metadataSize;
+
+  struct bindingCALL *out = NULL;
+  struct bindingCALL *in = bbind_newCALL();
+  struct bindingCALL *inWorker = in;
+
+  for ( size_t i = 0; ( worker - data->str ) < stringLength; i++ ) {
+    isPTR = *worker;
+    worker += 2;
+    worker = getNextNum( worker, ':', &argSize );
+
+    if ( worker == NULL ) {
+      printf( "binding: ERROR: Invalid parameter string! (arg%lu)\n", i );
+      goto cleanup;
+    }
+
+    if ( stringLength - ( worker - data->str ) < argSize ) {
+      printf( "binding: ERROR: Invalid argSize size %lu at arg %lu\n", argSize, i );
+      goto cleanup;
+    }
+
+    inWorker->isPTR = isPTR;
+    inWorker->length = argSize;
+    if ( isPTR == '0' ) {
+      inWorker->data = malloc( ( argSize + 1 ) * sizeof( char ) );
+
+      memcpy( (void *)inWorker->data, (void *)worker, argSize );
+      inWorker->data[argSize] = '\0';
+
+    } else if ( isPTR == '1' ) {
+      inWorker->length = 0;
+      char *temp = malloc( ( argSize + 1 ) * sizeof( char ) );
+      memcpy( (void *)temp, (void *)worker, argSize );
+      temp[argSize] = '\0';
+
+      unsigned long int ptr = strtoul( temp, NULL, 10 );
+      inWorker->data = (char *)ptr;
+
+      free( temp );
+
+    } else {
+      printf( "binding: ERROR: Invalid ptr state '%c' at arg %lu\n", isPTR, i );
+      goto cleanup;
+    }
+
+    worker += argSize;
+
+    inWorker->next = bbind_newCALL();
+    inWorker = inWorker->next;
+  }
+
+  if ( data->inf->funcs[fID]->fPTR( in, &out ) != 0 ) {
+    int bSize = snprintf( NULL, 0, "%lu|%lu;%sERROR", fID, metadataSize, metadata );
+    fprintf( data->inf->bReturn, "R%i;%lu|%lu;%sERROR", bSize, fID, metadataSize, metadata );
+    goto cleanup;
+  }
+
+  size_t outStrSize = 0;
+
+  struct bindingCALL *outWorker = out;
+  for ( size_t i = 0; outWorker != NULL; i++ ) {
+    outStrSize += snprintf( NULL, 0, "%c,%lu:", outWorker->isPTR, outWorker->length );
+    outStrSize += outWorker->length;
+    outWorker = outWorker->next;
+  }
+
+  outWorker = out;
+  char *outStr = malloc( ( outStrSize + 1 ) * sizeof( char ) );
+  char *outStrWorker = outStr;
+
+  for ( size_t i = 0; outWorker != NULL; i++ ) {
+    outStrWorker += snprintf( outStrWorker,
+                              outStrSize - ( outStrWorker - outStr ) + 1,
+                              "%c,%lu:",
+                              outWorker->isPTR,
+                              outWorker->length );
+
+    outStrWorker += snprintf( outStrWorker, outWorker->length + 1, "%s", outWorker->data );
+    outWorker = outWorker->next;
+  }
+
+  int bSize = snprintf( NULL, 0, "%lu|%lu;%s%s", fID, metadataSize, metadata, outStr );
+  fprintf( data->inf->bReturn, "R%i;%lu|%lu;%s%s", bSize, fID, metadataSize, metadata, outStr );
+
+  free( outStr );
+
+cleanup:
+  if ( out != NULL )
+    bbind_freeCALL( out );
+
+  bbind_freeCALL( in );
+  free( metadata );
+
+cleanup_partial:
+  fflush( stdout );
+  fflush( data->inf->bReturn );
+  free_stringAndInfPtr( data );
+  pthread_exit( NULL );
 }
+
 
 void *readCALL_thread( void *_d ) {
   struct bindingINFO *inf = (struct bindingINFO *)_d;
-  int c;
+  int c, ret = 0;
   while ( 1 ) {
     c = readChar( inf->bCall );
+    fflush( stdout );
     switch ( c ) {
+      case 'C':
+        ret = tid_create( inf->threads, &processCALL, (void *)readSizedInput( inf->bCall, inf ) );
+        if ( ret != 0 )
+          printf( "binding: ERROR: Failed to create internal call process thread!\n" );
+        break;
       case 'E':
         fprintf( inf->bReturn, "E" );
         fflush( inf->bReturn );
         pthread_exit( NULL );
         break;
-      default: printf( "binding: WARNING: -- RETURN -- Unknown command '%c'\n", c );
+      default:
+        printf( "binding: WARNING: -- RETURN -- Unknown command '%c'\n", c );
+        fflush( stdout );
     }
   }
   pthread_exit( NULL );
@@ -290,29 +433,19 @@ void *bbind_readReturn_thread( void *_d ) {
 }
 
 int bbind_run( struct bindingINFO *_inf ) {
-  pthread_t readCALL;
-  pthread_t bbind_readReturn;
-  pthread_attr_t attr;
-
-  pthread_attr_init( &attr );
-  pthread_attr_setdetachstate( &attr, PTHREAD_CREATE_JOINABLE );
-
   int ret;
-  ret = pthread_create( &readCALL, &attr, readCALL_thread, (void *)_inf );
+  ret = tid_create( _inf->threads, &readCALL_thread, (void *)_inf );
   if ( ret != 0 ) {
     printf( "binding: ERROR: Failed to create thread 1\n" );
     return 1;
   }
-  ret = pthread_create( &bbind_readReturn, &attr, bbind_readReturn_thread, (void *)_inf );
+  ret = tid_create( _inf->threads, &bbind_readReturn_thread, (void *)_inf );
   if ( ret != 0 ) {
     printf( "binding: ERROR: Failed to create thread 2\n" );
     return 2;
   }
 
-  pthread_attr_destroy( &attr );
-
-  pthread_join( readCALL, NULL );
-  pthread_join( bbind_readReturn, NULL );
+  tid_joinAll( _inf->threads );
 
   fclose( _inf->bCall );
   fclose( _inf->bReturn );

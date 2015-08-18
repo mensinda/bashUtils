@@ -4,7 +4,7 @@ project( BASHbinding )
 
 find_package ( Threads )
 
-set( SRC binding.c )
+set( SRC binding.c tidVector.c utils.c )
 set( CMAKE_C_STANDARD 11 )
 
 add_library( BASHbinding STATIC ${SRC} )

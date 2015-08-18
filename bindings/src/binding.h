@@ -14,7 +14,7 @@ struct bindingCALL {
   struct bindingCALL *next;
 };
 
-typedef int ( *bindingFunctionPTR )( struct bindingCALL *, struct bindingCALL * );
+typedef int ( *bindingFunctionPTR )( struct bindingCALL *, struct bindingCALL ** );
 
 
 struct bindingINFO *bbind_newINFO();
