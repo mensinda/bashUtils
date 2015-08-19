@@ -14,11 +14,14 @@ BASHBinding::bbind_generateFiles() {
   declare -A argProps
 
   dir="$(readlink -f "$(dirname "$2")")"
-  hFile="$dir/bind.h"
-  cFile="$dir/bind.c"
-  tFile="$dir/bindInit.c"
+
+  [ ! -d "$dir/src" ] && mkdir "$dir/src"
+
+  hFile="$dir/src/bind.h"
+  cFile="$dir/src/bind.c"
+  tFile="$dir/src/bindInit.c"
   cmakeFile="$dir/CMakeLists.txt"
-  mainFile="$dir/main.c"
+  mainFile="$dir/src/main.c"
 
   inludeList="stdio.h binding.h"
   includeDirs+=("$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/src")")
@@ -85,7 +88,7 @@ cmake_minimum_required(VERSION 2.8.8)
 project( $(basename "$dir") )
 set( CMAKE_C_STANDARD 11 )
 
-add_executable( binding main.c bind.c bindInit.c )
+add_executable( binding $cFile $tFile $mainFile )
 
 add_subdirectory( ${includeDirs[0]} \${PROJECT_BINARY_DIR}/${subDirs[0]} )
 include_directories( ${includeDirs[0]} )
