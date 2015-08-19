@@ -186,10 +186,11 @@ EOF
     [ -z "$line" ] && continue
 
     argList2=''
-    funcName="${line/%*( )(*/}"
-    returnType="${line/#*-->*( )/}"
-    argList="${line/#*[(]*( )/}"
-    argList="${argList/%*( ))*/}"
+    funcName="${line/%*( )(*}"
+    returnType="${funcName/%*( )+([a-zA-Z0-9])}"
+    funcName="${funcName/#* }"
+    argList="${line/#*[(]*( )}"
+    argList="${argList/%*( ))*}"
     OIFS=$IFS
     IFS=,
     argv=( $argList )
