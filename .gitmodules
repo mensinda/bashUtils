@@ -1,0 +1,3 @@
+[submodule "bindings/src/tinycc"]
+	path = bindings/src/tinycc
+	url = git://repo.or.cz/tinycc.git
