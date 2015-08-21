@@ -14,7 +14,9 @@ struct bindingCALL {
   struct bindingCALL *next;
 };
 
-typedef int ( *bindingFunctionPTR )( struct bindingCALL *, struct bindingCALL ** );
+typedef int ( *bindingFunctionPTR )( struct bindingINFO *,
+                                     struct bindingCALL *,
+                                     struct bindingCALL ** );
 
 
 struct bindingINFO *bbind_newINFO();
@@ -30,6 +32,8 @@ int bbind_addFunction( struct bindingINFO *_inf,
                        char const *_name,
                        size_t _params,
                        size_t _return );
+
+int bbind_addCallback( struct bindingINFO *_inf, char const *_name, void *_val );
 
 int bbind_init( struct bindingINFO *_inf, char const *_dir );
 int bbind_run( struct bindingINFO *_inf );

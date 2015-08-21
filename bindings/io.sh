@@ -50,7 +50,6 @@ BASHBinding::bbind_readCallback() {
         read -d ';' size
         $1 . isInit 'true'
         FIFOcontinue "$fifoDir/wait_init_FIFO"
-        msg2 "Init done"
         ;;
       E) return ;;
       *) warning "Unknown command -- call -- '$char'"
@@ -71,7 +70,7 @@ BASHBinding::bbind_sendCALL() {
   data="${data/#+([0-9]);}"
   data="${data:$mSize}"
 
-  while [ -n "$data" ]; do
+  while [[ "$data" == *":"* ]]; do
     isPTR="${data/%,*}"
     data="${data/#+([0-9]),}"
     mSize="${data/%:*}"

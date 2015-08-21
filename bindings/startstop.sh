@@ -2,7 +2,6 @@
 
 BASHBinding::bbind_start() {
   argsRequired 1 $#
-  msg1 "Starting $($1 classname)"
   [[ "$($1 . isCompiled)" != 'true' ]] && die "Not compiled!"
   local fifoDir line fIn fIndex fName className
   fifoDir="$($1 . fifoDir)"
@@ -58,7 +57,6 @@ BASHBinding::bbind_stop() {
   argsRequired 1 $#
   [[ "$($1 . isStarted)" != 'true' ]] && return
   $1 . isStarted 'false'
-  msg1 "Stopping $($1 classname) ..."
 
   echo 'E' 1>&100
   echo 'E' 1>&101
@@ -70,6 +68,4 @@ BASHBinding::bbind_stop() {
   wait "$($1 . bindingThread)"
   wait "$($1 . bbind_readReturnThread)"
   wait "$($1 . bbind_readCallbackThread)"
-
-  msg2 "DONE"
 }

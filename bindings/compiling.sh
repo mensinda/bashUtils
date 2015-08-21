@@ -5,12 +5,20 @@ BASHBinding::bbind_compile() {
   programRequired 'cmake'
   programRequired 'make'
 
-  local compiled path
-  compiled="$($1 . isCompiled)"
+  local path sourcePath
   path="$($1 . libPath)"
-  [[ "$compiled" == 'true' ]] && return
+  sourcePath="$(dirname "${BASH_SOURCE[0]}")"
 
   msg1 "Compiling binding '$($1 classname)'"
+
+  if [ ! -f "$sourcePath/src/tinycc/tcc" ]; then
+    msg2 "Compiling TinyCC"
+    pushd "$sourcePath/src/tinycc" &> /dev/null
+    ./configure
+    make
+    (( $? != 0 )) && die "Failed to build TinyCC"
+    popd &> /dev/null
+  fi
 
   if [ -f "$path/bind.def" ]; then
     found "Binding definition file '$path/bind.def'"

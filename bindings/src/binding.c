@@ -2,6 +2,8 @@
 #include "tidVector.h"
 #include "utils.h"
 
+#include <libtcc.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -35,6 +37,9 @@ struct bindingINFO {
   struct bindingFUNC *end;
 
   struct bindingFUNC **funcs;
+
+  struct TCCState *tcc;
+  void *tcc_mem;
 };
 
 struct bindingFUNC {
@@ -64,6 +69,11 @@ struct bindingINFO *bbind_newINFO() {
   s->end = NULL;
 
   s->funcs = NULL;
+
+  s->tcc = tcc_new();
+  tcc_set_output_type( s->tcc, TCC_OUTPUT_MEMORY );
+
+  s->tcc_mem = NULL;
 
   return s;
 }
@@ -100,6 +110,11 @@ void bbind_freeINFO( struct bindingINFO *_s ) {
 
   if ( _s->threads != NULL )
     tid_free( _s->threads );
+
+  tcc_delete( _s->tcc );
+
+  if ( _s->tcc_mem != NULL )
+    free( _s->tcc_mem );
 
   free( _s );
 }
@@ -168,6 +183,11 @@ int bbind_addFunction( struct bindingINFO *_inf,
   }
   _inf->end = current;
 
+  return 0;
+}
+
+int bbind_addCallback( struct bindingINFO *_inf, char const *_name, void *_val ) {
+  tcc_add_symbol( _inf->tcc, _name, _val );
   return 0;
 }
 
@@ -340,7 +360,7 @@ void *processCALL( void *_d ) {
     inWorker = inWorker->next;
   }
 
-  if ( data->inf->funcs[fID]->fPTR( in, &out ) != 0 ) {
+  if ( data->inf->funcs[fID]->fPTR( data->inf, in, &out ) != 0 ) {
     int bSize = snprintf( NULL, 0, "%lu|%lu;%sERROR", fID, metadataSize, metadata );
     fprintf( data->inf->bReturn, "R%i;%lu|%lu;%sERROR", bSize, fID, metadataSize, metadata );
     goto cleanup;
@@ -353,6 +373,12 @@ void *processCALL( void *_d ) {
     outStrSize += snprintf( NULL, 0, "%c,%lu:", outWorker->isPTR, outWorker->length );
     outStrSize += outWorker->length;
     outWorker = outWorker->next;
+  }
+
+  if ( outStrSize == 0 ) {
+    int bSize = snprintf( NULL, 0, "%lu|%lu;%s", fID, metadataSize, metadata );
+    fprintf( data->inf->bReturn, "R%i;%lu|%lu;%s", bSize, fID, metadataSize, metadata );
+    goto cleanup;
   }
 
   outWorker = out;

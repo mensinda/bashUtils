@@ -68,6 +68,7 @@ __CLASS_accessOBJ() {
           tmp="$(type -t "$func")" &> /dev/null
           [[ "$?" != 0 || "$tmp" != "function" ]] && die "Member '$4' of class '$1' is undefined or not a function"
           "$func" "__CLASS_accessOBJprivate $1 $2 ${t:1}" "${@:7}"
+          return $?
         ;;
 
         *) die "Internal error: Unknown member type" ;;

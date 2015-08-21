@@ -6,9 +6,10 @@ find_package ( Threads )
 
 set( SRC ${PROJECT_SOURCE_DIR}/binding.c ${PROJECT_SOURCE_DIR}/tidVector.c ${PROJECT_SOURCE_DIR}/utils.c )
 set( CMAKE_C_STANDARD 11 )
+set( CMAKE_C_FLAGS -Wall )
 
 set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR} )
-#set( LIBTCC_ROOT ${PROJECT_SOURCE_DIR}/tinycc )
+set( LIBTCC_ROOT ${PROJECT_SOURCE_DIR}/tinycc )
 
 find_package( LibTCC REQUIRED )
 

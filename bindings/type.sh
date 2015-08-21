@@ -89,7 +89,7 @@ BASHBinding::bbind_genCast2Char() {
 BASHBinding::bbind_resolveTypedef() {
   argsRequired 5 $#
   programRequired 'g++'
-  local i name t typeOnly inclDirs
+  local i name t typeOnly inclDirs ret
   name="$(readlink -f "$4")/tmp.cpp"
   t="${2/%*( )}"
   typeOnly="${t//\*}"
@@ -109,13 +109,23 @@ BASHBinding::bbind_resolveTypedef() {
 #include <string>
 
 template <bool B, typename T, int N>
-struct worker {
-  typedef T type;
-  static const int counter = 1000;
+struct worker {};
+
+template <bool B, typename T>
+struct workerEnd {};
+
+template <typename T>
+struct workerEnd<true, T> {
+  static const int size = sizeof(T);
+};
+
+template <typename T>
+struct workerEnd<false, T> {
+  static const int size = sizeof(void *);
 };
 
 template <typename T, int N>
-struct worker<false, T, N> {
+struct worker<false, T, N> : workerEnd<std::is_fundamental<T>::value, T> {
   typedef T type;
   static const int counter = N;
 };
@@ -154,7 +164,7 @@ int main() {
   int pointerLevel = count_ptr<$t>::counter;
   typedef count_ptr<$t>::type type;
 
-  size_t size = sizeof( type );
+  size_t size = count_ptr<$t>::size;
 
   if ( std::is_const<type>::value )
     append( str, "const" );
@@ -187,11 +197,8 @@ int main() {
     }
   } else {
     // struct
-    if ( std::is_pointer<$typeOnly>::value ) {
-      std::cout << "$t" << std::endl;
-      return 1;
-    }
-    append( str, "$typeOnly" );
+    std::cout << "$t" << std::endl;
+    return 1;
   }
 
   if ( std::is_void<type>::value )
@@ -217,8 +224,11 @@ EOF
   (( $? != 0 )) && die "Failed to resolve type"
 
   ${name/%.cpp}
+  ret=$?
 
   for i in "${name/%.cpp}" "$name"; do
     [ -e "$i" ] && rm "$i"
   done
+
+  return $ret
 }
