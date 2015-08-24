@@ -11,11 +11,8 @@ BASHBinding::bbind_start() {
   $1 . bindingThread "$!"
 
   exec 100>"$($1 . fifoDir)/bindingCALL"
-  exec 101>"$($1 . fifoDir)/shellRETURN"
 
-  $1 . bbind_readReturn   < "$fifoDir/bindingRETURN" 3>&100 4>&101 &
-  $1 . bbind_readReturnThread "$!"
-  $1 . bbind_readCallback < "$fifoDir/shellCALL"     3>&100 4>&101 &
+  $1 . bbind_readCallback < "$fifoDir/shellCALL" 4>&100 &
   $1 . bbind_readCallbackThread "$!"
 
   FIFOwait "$fifoDir/wait_init_FIFO"
@@ -59,13 +56,10 @@ BASHBinding::bbind_stop() {
   $1 . isStarted 'false'
 
   echo 'E' 1>&100
-  echo 'E' 1>&101
 
   # Closing pipes
   exec 100>&-
-  exec 101>&-
 
   wait "$($1 . bindingThread)"
-  wait "$($1 . bbind_readReturnThread)"
   wait "$($1 . bbind_readCallbackThread)"
 }

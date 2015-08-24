@@ -21,7 +21,7 @@ BASHBinding::BASHBinding() {
   $1 . isInit    'false'
 
   local i
-  for i in {binding,shell}{CALL,RETURN}; do
+  for i in {binding,shell}CALL; do
     [ -e "$(readlink -f "$3")/$i" ] && rm "$(readlink -f "$3")/$i"
     mkfifo "$(readlink -f "$3")/$i"
     (( $? != 0 )) && die "Failed to create FIFO '$(readlink -f "$3")/$i'"
@@ -36,7 +36,7 @@ BASHBinding::~BASHBinding() {
 
   [[ "$started" == 'true' ]] && $1 . bbind_stop
 
-  for i in {binding,shell}{CALL,RETURN}; do
+  for i in {binding,shell}CALL; do
     [ -e "$dir/$i" ] && rm "$dir/$i"
   done
 }

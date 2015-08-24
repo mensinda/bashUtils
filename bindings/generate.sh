@@ -441,8 +441,12 @@ EOF
       if [[ "$opts" == *"in"* ]]; then
         (( inCounter++ ))
         echo '  if ( _arg == NULL ) {'
-        echo '    printf( "binding: ERROR: func: $funcName _arg is NULL\n" );'
+        echo "    printf( \"binding: ERROR: func: $funcName _arg is NULL\n\" );"
         echo '    return 1;'
+        echo '  }'
+        echo '  if ( _arg->data == NULL ) {'
+        echo "    printf( \"binding: ERROR: func: $funcName _arg->data is NULL\n\" );"
+        echo '    return 2;'
         echo '  }'
         echo "  struct bindingCALL *s_arg$i = _arg;"
         echo ''
@@ -461,7 +465,12 @@ EOF
 
         # No strings (int, etc)
         if (( ${#tmp} > 0 && j == 0 )); then
-          echo "  $I ${tmp}arg$i;"
+          if (( isStruct == 0 )); then
+            echo "  $I value_arg$i;"
+            echo "  $I ${tmp}arg$i = ${tmp//\*/&}value_arg$i;"
+          else
+            echo "  $I ${tmp}arg$i = NULL;"
+          fi
           echo "  if ( _arg->isPTR == '1' ) {"
           echo -n "    arg$i = "
           $1 . bbind_genCastFromChar "$I" "$tmp" "_arg->data"

@@ -1,29 +1,5 @@
 #!/bin/bash
 
-BASHBinding::bbind_readReturn() {
-  local char size data temp metadata fifoDir
-
-  fifoDir="$($1 . fifoDir)"
-
-  while read -N 1 char; do
-    case "${char}" in
-      R)
-        read -d ';' size
-        read -N $size data
-
-        temp="${data/#+([0-9])|}"
-        temp="${temp/%;*}"
-
-        metadata="${data/#*([0-9|]);}"
-        metadata="${metadata:0:$temp}"
-        echo -n "$data" 1>"$fifoDir/$metadata"
-        ;;
-      E) return ;;
-      *) warning "Unknown command -- return -- '$char'"
-    esac
-  done
-}
-
 BASHBinding::bbind_readCallback() {
   local char size fName fifoDir
 

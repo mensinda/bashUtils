@@ -30,7 +30,7 @@ BASHBinding::bbind_compile() {
   cd "$path/build"
 
   msg2 "Running CMake"
-  cmake ..
+  cmake -DCMAKE_BUILD_TYPE=Debug ..
   (( $? != 0 )) && die "CMake error"
 
   msg2 "Running make"

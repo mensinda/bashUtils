@@ -28,9 +28,7 @@ struct bindingINFO {
   char *fifoDir;
 
   FILE *bCall;
-  FILE *bReturn;
   FILE *sCall;
-  FILE *sReturn;
 
   struct tidVector *threads;
 
@@ -62,9 +60,7 @@ struct bindingINFO *bbind_newINFO() {
   s->fifoDir = NULL;
 
   s->bCall = NULL;
-  s->bReturn = NULL;
   s->sCall = NULL;
-  s->sReturn = NULL;
 
   s->threads = tid_init();
 
@@ -238,8 +234,6 @@ int bbind_init( struct bindingINFO *_inf, char const *_dir ) {
   strcpy( _inf->fifoDir, _dir );
 
   ret += openFIFO( _dir, "r", "bindingCALL", &_inf->bCall );
-  ret += openFIFO( _dir, "r", "shellRETURN", &_inf->sReturn );
-  ret += openFIFO( _dir, "w", "bindingRETURN", &_inf->bReturn );
   ret += openFIFO( _dir, "w", "shellCALL", &_inf->sCall );
 
   _inf->funcs = malloc( sizeof( struct bindingFUNC * ) * _inf->numFuncs );
@@ -257,7 +251,7 @@ int bbind_init( struct bindingINFO *_inf, char const *_dir ) {
     fprintf( _inf->sCall, "I%lu;%s#%i:%lu,%lu", s, curr->name, i, curr->in, curr->out );
     fflush( _inf->sCall );
 
-    c = fgetc( _inf->sReturn );
+    c = fgetc( _inf->bCall );
     if ( c != '1' ) {
       printf( "binding: ERROR: failed to init: missing BASH binding '%s'\n", curr->name );
       return -2;
@@ -324,6 +318,7 @@ void *processCALL( void *_d ) {
   worker += metadataSize;
 
   struct bindingCALL *out = NULL;
+  FILE *outFD = NULL;
   struct bindingCALL *in = bbind_newCALL();
   struct bindingCALL *inWorker = in;
 
@@ -372,9 +367,13 @@ void *processCALL( void *_d ) {
     inWorker = inWorker->next;
   }
 
+  if ( openFIFO( data->inf->fifoDir, "w", metadata, &outFD ) != 0 ) {
+    printf( "Failed to open FIFO %s\n", metadata );
+    goto cleanup;
+  }
+
   if ( data->inf->funcs[fID]->fPTR( data->inf, in, &out ) != 0 ) {
-    int bSize = snprintf( NULL, 0, "%lu|%lu;%sERROR", fID, metadataSize, metadata );
-    fprintf( data->inf->bReturn, "R%i;%lu|%lu;%sERROR", bSize, fID, metadataSize, metadata );
+    fprintf( outFD, "%lu|%lu;%sERROR", fID, metadataSize, metadata );
     goto cleanup;
   }
 
@@ -388,8 +387,7 @@ void *processCALL( void *_d ) {
   }
 
   if ( outStrSize == 0 ) {
-    int bSize = snprintf( NULL, 0, "%lu|%lu;%s", fID, metadataSize, metadata );
-    fprintf( data->inf->bReturn, "R%i;%lu|%lu;%s", bSize, fID, metadataSize, metadata );
+    fprintf( outFD, "%lu|%lu;%s", fID, metadataSize, metadata );
     goto cleanup;
   }
 
@@ -408,8 +406,7 @@ void *processCALL( void *_d ) {
     outWorker = outWorker->next;
   }
 
-  int bSize = snprintf( NULL, 0, "%lu|%lu;%s%s", fID, metadataSize, metadata, outStr );
-  fprintf( data->inf->bReturn, "R%i;%lu|%lu;%s%s", bSize, fID, metadataSize, metadata, outStr );
+  fprintf( outFD, "%lu|%lu;%s%s", fID, metadataSize, metadata, outStr );
 
   free( outStr );
 
@@ -417,12 +414,16 @@ cleanup:
   if ( out != NULL )
     bbind_freeCALL( out );
 
+  if ( outFD != NULL ) {
+    fflush( outFD );
+    fclose( outFD );
+  }
+
   bbind_freeCALL( in );
   free( metadata );
 
 cleanup_partial:
   fflush( stdout );
-  fflush( data->inf->bReturn );
   free_stringAndInfPtr( data );
   pthread_exit( NULL );
 }
@@ -498,31 +499,10 @@ void *readCALL_thread( void *_d ) {
         if ( ret != 0 )
           printf( "binding: ERROR: Failed to create internal call process thread!\n" );
         break;
-      case 'E':
-        fprintf( inf->bReturn, "E" );
-        fflush( inf->bReturn );
-        pthread_exit( NULL );
-        break;
+      case 'E': pthread_exit( NULL ); break;
       default:
         printf( "binding: WARNING: -- RETURN -- Unknown command '%c'\n", c );
         fflush( stdout );
-    }
-  }
-  pthread_exit( NULL );
-}
-
-void *bbind_readReturn_thread( void *_d ) {
-  struct bindingINFO *inf = (struct bindingINFO *)_d;
-  int c;
-  while ( 1 ) {
-    c = readChar( inf->sReturn );
-    switch ( c ) {
-      case 'E':
-        fprintf( inf->sCall, "E" );
-        fflush( inf->sCall );
-        pthread_exit( NULL );
-        break;
-      default: printf( "binding: WARNING: -- RETURN -- Unknown command '%c'\n", c );
     }
   }
   pthread_exit( NULL );
@@ -535,18 +515,11 @@ int bbind_run( struct bindingINFO *_inf ) {
     printf( "binding: ERROR: Failed to create thread 1\n" );
     return 1;
   }
-  ret = tid_create( _inf->threads, &bbind_readReturn_thread, (void *)_inf );
-  if ( ret != 0 ) {
-    printf( "binding: ERROR: Failed to create thread 2\n" );
-    return 2;
-  }
 
   tid_joinAll( _inf->threads );
 
   fclose( _inf->bCall );
-  fclose( _inf->bReturn );
   fclose( _inf->sCall );
-  fclose( _inf->sReturn );
 
   bbind_freeINFO( _inf );
   return 0;
