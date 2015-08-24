@@ -288,6 +288,63 @@ EOF
       echo '  retP = &ret->next;'
     done
 
+    tmp="${returnType//[^*]/}"
+
+    returnType="${returnType/#*( )}"
+    returnType="${returnType/%*( )}"
+
+    echo ''
+    echo '  struct bindingCALL *retVal = NULL;'
+    echo '  retVal = generateCALLBACK( _inf, _id, *out );'
+    echo ''
+    echo '  if ( retVal == NULL ) {'
+    echo "    printf( \"binding: ERROR: func: $funcName retVal is NULL\n\" );"
+    echo "    $returnType ${tmp}ret;"
+    echo "    return ret;"
+    echo '  }'
+    echo ''
+
+    # 'char *' is special
+    if [[ "${#tmp}" == '1' ]]; then
+      for j in $returnType; do
+        if [[ "$j" == 'char' ]]; then
+          echo "  $returnType ${tmp}retType = ($returnType ${tmp})retVal->data;"
+          j=-1
+          break
+        fi
+      done
+    fi
+
+    # No strings (int, etc)
+    if (( ${#tmp} > 0 && j == 0 )); then
+      echo "  $returnType ${tmp}ret;"
+      echo "  if ( retVal->isPTR == '1' ) {"
+      echo -n "    retType = "
+      $1 . bbind_genCastFromChar "$returnType" "$tmp" "retVal->data"
+      echo -n '  }'
+      if [[ "$opts" == *"!"* || "$opts" == *":"* ]]; then
+        echo ''
+      else
+        echo ' else {'
+        if (( isStruct == 0 )); then
+          echo -n "    ${tmp}retType = "
+          $1 . bbind_genCastFromChar "$returnType" "" "retVal->data"
+        else
+          echo "    printf( \"binding: ERROR: struct inputs MUST be pointers!\" );"
+          echo "    return 2;"
+        fi
+        echo '  }'
+      fi
+      echo ''
+    elif (( j == 0 )); then
+      echo -n "  $returnType ${tmp}retType = "
+      $1 . bbind_genCastFromChar "$returnType" "$tmp" "retVal->data"
+    fi
+
+    echo ''
+    echo '  bbind_freeCALL( retVal );'
+    echo '  return retType;'
+
     echo "}"
 
   done < "$2" 1>> "$cFile" 3>> "$tFile"

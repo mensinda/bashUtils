@@ -35,6 +35,10 @@ int bbind_addFunction( struct bindingINFO *_inf,
 
 int bbind_addCallback( struct bindingINFO *_inf, char const *_name, void *_val );
 
+struct bindingCALL *generateCALLBACK( struct bindingINFO *_inf,
+                                      char const *_id,
+                                      struct bindingCALL *_args );
+
 int bbind_init( struct bindingINFO *_inf, char const *_dir );
 int bbind_run( struct bindingINFO *_inf );
 

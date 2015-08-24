@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include <time.h>
 
 /*
  *    _____ _                   _
@@ -24,6 +25,8 @@
 
 
 struct bindingINFO {
+  char *fifoDir;
+
   FILE *bCall;
   FILE *bReturn;
   FILE *sCall;
@@ -55,6 +58,8 @@ struct bindingFUNC {
 
 struct bindingINFO *bbind_newINFO() {
   struct bindingINFO *s = malloc( sizeof( struct bindingINFO ) );
+
+  s->fifoDir = NULL;
 
   s->bCall = NULL;
   s->bReturn = NULL;
@@ -101,6 +106,9 @@ struct bindingCALL *bbind_newCALL() {
 void bbind_freeINFO( struct bindingINFO *_s ) {
   if ( _s == NULL )
     return;
+
+  if ( _s->fifoDir != NULL )
+    free( _s->fifoDir );
 
   if ( _s->begin != 0 )
     bbind_freeFUNC( _s->begin );
@@ -224,6 +232,10 @@ int openFIFO( char const *_root, char const *_mode, char const *_name, FILE **_f
 
 int bbind_init( struct bindingINFO *_inf, char const *_dir ) {
   int ret = 0;
+  srand( time( NULL ) );
+
+  _inf->fifoDir = malloc( strlen( _dir ) + 1 );
+  strcpy( _inf->fifoDir, _dir );
 
   ret += openFIFO( _dir, "r", "bindingCALL", &_inf->bCall );
   ret += openFIFO( _dir, "r", "shellRETURN", &_inf->sReturn );
@@ -413,6 +425,64 @@ cleanup_partial:
   fflush( data->inf->bReturn );
   free_stringAndInfPtr( data );
   pthread_exit( NULL );
+}
+
+struct bindingCALL *generateCALLBACK( struct bindingINFO *_inf,
+                                      char const *_id,
+                                      struct bindingCALL *_args ) {
+  struct bindingCALL *ret = NULL;
+
+  size_t outStrSize = 0, metadataSize = 16, idLen = strlen( _id );
+
+  char *metadata = malloc( metadataSize + 1 );
+  char *outStr = NULL;
+
+  for ( size_t i = 0; i < metadataSize; i++ ) {
+    metadata[i] = (char)( 33 + rand() % 90 );
+    if ( metadata[i] == '/' )
+      metadata[i]++;
+  }
+
+  metadata[metadataSize + 1] = '\0';
+
+  struct bindingCALL *outWorker = _args;
+  for ( size_t i = 0; outWorker != NULL; i++ ) {
+    outStrSize += snprintf( NULL, 0, "%c,%lu:", outWorker->isPTR, outWorker->length );
+    outStrSize += outWorker->length;
+    outWorker = outWorker->next;
+  }
+
+  if ( outStrSize == 0 ) {
+    int bSize = snprintf( NULL, 0, "%lu;%s%lu;%s", idLen, _id, metadataSize, metadata );
+    fprintf( _inf->sCall, "C%i;%lu;%s%lu;%s", bSize, idLen, _id, metadataSize, metadata );
+    goto cleanup;
+  }
+
+  outWorker = _args;
+  outStr = malloc( ( outStrSize + 1 ) * sizeof( char ) );
+  char *outStrWorker = outStr;
+
+  for ( size_t i = 0; outWorker != NULL; i++ ) {
+    outStrWorker += snprintf( outStrWorker,
+                              outStrSize - ( outStrWorker - outStr ) + 1,
+                              "%c,%lu:",
+                              outWorker->isPTR,
+                              outWorker->length );
+
+    outStrWorker += snprintf( outStrWorker, outWorker->length + 1, "%s", outWorker->data );
+    outWorker = outWorker->next;
+  }
+
+  int bSize = snprintf( NULL, 0, "%lu;%s%lu;%s%s", idLen, _id, metadataSize, metadata, outStr );
+  fprintf( _inf->sCall, "C%i;%lu;%s%lu;%s%s", bSize, idLen, _id, metadataSize, metadata, outStr );
+
+cleanup:
+  free( metadata );
+
+  if ( outStr != NULL )
+    free( outStr );
+
+  return ret;
 }
 
 
