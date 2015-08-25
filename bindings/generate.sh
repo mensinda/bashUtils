@@ -251,11 +251,12 @@ EOF
     echo " ) {"
 
     echo ''
-    echo '  struct bindingCALL **retP = NULL;'
-    echo '  struct bindingCALL **out  = retP;'
-    echo '  struct bindingCALL *ret   = NULL;'
+    echo '  struct bindingCALL  *ret  = NULL;'
+    echo '  struct bindingCALL  *out  = NULL;'
+    echo '  struct bindingCALL **retP = &ret;'
     echo ''
 
+    j=0
     for (( i = 0; i < ${#argv[@]}; i++ )); do
       [[ "${argProps[$i:type]}" == 'void ' ]] && continue
       (( outCounter++ ))
@@ -275,17 +276,21 @@ EOF
         echo ''
         echo '  *retP = bbind_newCALL();'
         echo '  ret = *retP;'
+        (( j == 0 )) && echo '  out = ret;'
         $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" '' 'true'
         echo "  ret->isPTR = '1';"
         echo '  retP = &ret->next;'
+        j=1
       fi
 
       echo ''
       echo '  *retP = bbind_newCALL();'
       echo '  ret = *retP;'
+      (( j == 0 )) && echo '  out = ret;'
       $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I" 'false'
       echo "  ret->isPTR = '0';"
       echo '  retP = &ret->next;'
+      j=1
     done
 
     tmp="${returnType//[^*]/}"
@@ -295,7 +300,7 @@ EOF
 
     echo ''
     echo '  struct bindingCALL *retVal = NULL;'
-    echo '  retVal = generateCALLBACK( _inf, _id, *out );'
+    echo '  retVal = generateCALLBACK( _inf, _id, out );'
     echo ''
     echo '  if ( retVal == NULL ) {'
     echo "    printf( \"binding: ERROR: func: $funcName retVal is NULL\n\" );"
@@ -305,6 +310,7 @@ EOF
     echo ''
 
     # 'char *' is special
+    j=0
     if [[ "${#tmp}" == '1' ]]; then
       for j in $returnType; do
         if [[ "$j" == 'char' ]]; then
@@ -346,6 +352,17 @@ EOF
     echo '  return retType;'
 
     echo "}"
+    echo ''
+    for (( i = 0; i < ${#argv[@]}; i++ )); do
+      if (( i == 0 )); then
+        tmp="${argProps[$i:type]} _$i"
+        I="_$i"
+      else
+        tmp="${tmp}, ${argProps[$i:type]} _$i"
+        I="$I, _$i"
+      fi
+    done
+    echo "#define BBIND_CALLBACK_HELPER_$funcName \"bbind_funcCB_$funcName\", \"$returnType\", \"$tmp\", \"$I\""
 
   done < "$2" 1>> "$cFile" 3>> "$tFile"
 
@@ -434,22 +451,27 @@ EOF
 
       echo ''
       echo "  /* parameter $i; type: '$I'; ptr: '$tmp'; mata: '$opts' */"
+      echo '  if ( _arg == NULL ) {'
+      echo "    printf( \"binding: ERROR: func: $funcName _arg is NULL\n\" );"
+      echo '    return 1;'
+      echo '  }'
+      echo '  if ( _arg->data == NULL ) {'
+      echo "    printf( \"binding: ERROR: func: $funcName _arg->data is NULL\n\" );"
+      echo '    return 2;'
+      echo '  }'
+      echo "  struct bindingCALL *s_arg$i = _arg;"
+      echo ''
+
+      if [[ "$opts" == *"FPTR"* ]]; then
+        (( inCounter++ ))
+        echo "  $I ${tmp}arg$i = ($I ${tmp})bbind_genFunctionPointer( _inf, _arg->data, BBIND_CALLBACK_HELPER_$I );"
+        [[ "$opts" != *"DUMMY"* ]] && argList2="$argList2 arg${i},"
 
       ##
       ## IN
       ##
-      if [[ "$opts" == *"in"* ]]; then
+      elif [[ "$opts" == *"in"* ]]; then
         (( inCounter++ ))
-        echo '  if ( _arg == NULL ) {'
-        echo "    printf( \"binding: ERROR: func: $funcName _arg is NULL\n\" );"
-        echo '    return 1;'
-        echo '  }'
-        echo '  if ( _arg->data == NULL ) {'
-        echo "    printf( \"binding: ERROR: func: $funcName _arg->data is NULL\n\" );"
-        echo '    return 2;'
-        echo '  }'
-        echo "  struct bindingCALL *s_arg$i = _arg;"
-        echo ''
         j=0
 
         # 'char *' is special

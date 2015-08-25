@@ -20,4 +20,6 @@ struct stringAndInfPtr *readSizedInput( FILE *_file, struct bindingINFO *_inf );
 
 char *getNextNum( char *_str, char _end, unsigned long int *_num );
 
+int openFIFO( char const *_root, char const *_mode, char const *_name, FILE **_f );
+
 #endif /* end of include guard: BBINDING_UTILS_H */

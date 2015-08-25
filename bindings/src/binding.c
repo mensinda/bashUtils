@@ -195,35 +195,63 @@ int bbind_addCallback( struct bindingINFO *_inf, char const *_name, void *_val )
   return 0;
 }
 
+void *bbind_genFunctionPointer( struct bindingINFO *_inf,
+                                char const *_id,
+                                char const *_fName,
+                                char const *_return,
+                                char const *_args,
+                                char const *_argsNoType ) {
+  static int counter = 0;
+  char *symbol = malloc( snprintf( NULL, 0, "__binding_callback_%i", counter ) + 1 );
+  sprintf( symbol, "__binding_callback_%i", counter );
 
-int openFIFO( char const *_root, char const *_mode, char const *_name, FILE **_f ) {
-  char *path = malloc( ( strlen( _root ) + strlen( _name ) + 3 ) * sizeof( char ) );
+  size_t strSize = snprintf( NULL,
+                             0,
+                             "%s %s(%s) {\n"
+                             "  unsigned long infPTR = %lu;\n"
+                             "  return %s( (struct bindingINFO *)infPTR, \"%s\", %s );\n"
+                             "}",
 
-  strcpy( path, _root );
-  strcat( path, "/" );
-  strcat( path, _name );
+                             _return,
+                             symbol,
+                             _args,
 
-  struct stat st;
-  if ( stat( path, &st ) == -1 ) {
-    printf( "binding: ERROR: can not access '%s'\n", path );
-    free( path );
-    return 1;
-  }
-  if ( !S_ISFIFO( st.st_mode ) ) {
-    printf( "binding: ERROR: '%s' is NOT a FIFO\n", path );
-    free( path );
-    return 2;
-  }
+                             (unsigned long)_inf,
 
-  *_f = fopen( path, _mode );
-  if ( *_f == NULL ) {
-    printf( "binding: ERROR: Failed to open FIFO '%s'\n", path );
-    free( path );
-    return 3;
-  }
+                             _fName,
+                             _id,
+                             _argsNoType );
 
-  free( path );
-  return 0;
+  char *cCode = malloc( strSize + 1 );
+  snprintf( cCode,
+            strSize + 1,
+            "%s %s(%s) {\n"
+            "  unsigned long infPTR = %lu;\n"
+            "  return %s( (struct bindingINFO *)infPTR, \"%s\", %s );\n"
+            "}",
+
+            _return,
+            symbol,
+            _args,
+
+            (unsigned long)_inf,
+
+            _fName,
+            _id,
+            _argsNoType );
+
+  tcc_compile_string( _inf->tcc, cCode );
+  if ( _inf->tcc_mem == NULL )
+    _inf->tcc_mem = malloc( tcc_relocate( _inf->tcc, NULL ) );
+  else
+    _inf->tcc_mem = realloc( _inf->tcc_mem, tcc_relocate( _inf->tcc, NULL ) );
+  tcc_relocate( _inf->tcc, _inf->tcc_mem );
+
+  void *fPTR = tcc_get_symbol( _inf->tcc, symbol );
+
+  free( symbol );
+  free( cCode );
+  return fPTR;
 }
 
 int bbind_init( struct bindingINFO *_inf, char const *_dir ) {
@@ -436,6 +464,7 @@ struct bindingCALL *generateCALLBACK( struct bindingINFO *_inf,
   size_t outStrSize = 0, metadataSize = 16, idLen = strlen( _id );
 
   char *metadata = malloc( metadataSize + 1 );
+  char *FIFOpath = malloc( strlen( _inf->fifoDir ) + metadataSize + 3 );
   char *outStr = NULL;
 
   for ( size_t i = 0; i < metadataSize; i++ ) {
@@ -445,6 +474,16 @@ struct bindingCALL *generateCALLBACK( struct bindingINFO *_inf,
   }
 
   metadata[metadataSize + 1] = '\0';
+
+  strcpy( FIFOpath, _inf->fifoDir );
+  strcat( FIFOpath, "/" );
+  strcat( FIFOpath, metadata );
+
+  if ( mkfifo( FIFOpath, S_IREAD | S_IWRITE | S_IEXEC ) != 0 ) {
+    printf( "binding: ERROR: failed to create FIFO '%s'\n", FIFOpath );
+    goto cleanup;
+  }
+
 
   struct bindingCALL *outWorker = _args;
   for ( size_t i = 0; outWorker != NULL; i++ ) {
@@ -478,7 +517,9 @@ struct bindingCALL *generateCALLBACK( struct bindingINFO *_inf,
   fprintf( _inf->sCall, "C%i;%lu;%s%lu;%s%s", bSize, idLen, _id, metadataSize, metadata, outStr );
 
 cleanup:
+  remove( FIFOpath );
   free( metadata );
+  free( FIFOpath );
 
   if ( outStr != NULL )
     free( outStr );

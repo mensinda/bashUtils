@@ -34,6 +34,12 @@ int bbind_addFunction( struct bindingINFO *_inf,
                        size_t _return );
 
 int bbind_addCallback( struct bindingINFO *_inf, char const *_name, void *_val );
+void *bbind_genFunctionPointer( struct bindingINFO *_inf,
+                                char const *_id,
+                                char const *_fName,
+                                char const *_return,
+                                char const *_args,
+                                char const *_argsNoType );
 
 struct bindingCALL *generateCALLBACK( struct bindingINFO *_inf,
                                       char const *_id,

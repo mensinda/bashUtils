@@ -27,6 +27,11 @@ BASHBinding::bbind_readCallback() {
         $1 . isInit 'true'
         FIFOcontinue "$fifoDir/wait_init_FIFO"
         ;;
+      C)
+        read -d ';' size
+        read -N $size string
+        msg1 "C: '$string'"
+        ;;
       E) return ;;
       *) warning "Unknown command -- call -- '$char'"
     esac

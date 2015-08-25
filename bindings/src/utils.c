@@ -99,3 +99,33 @@ char *getNextNum( char *_str, char _end, unsigned long int *_num ) {
 
   return _str;
 }
+
+int openFIFO( char const *_root, char const *_mode, char const *_name, FILE **_f ) {
+  char *path = malloc( ( strlen( _root ) + strlen( _name ) + 3 ) * sizeof( char ) );
+
+  strcpy( path, _root );
+  strcat( path, "/" );
+  strcat( path, _name );
+
+  struct stat st;
+  if ( stat( path, &st ) == -1 ) {
+    printf( "binding: ERROR: can not access '%s'\n", path );
+    free( path );
+    return 1;
+  }
+  if ( !S_ISFIFO( st.st_mode ) ) {
+    printf( "binding: ERROR: '%s' is NOT a FIFO\n", path );
+    free( path );
+    return 2;
+  }
+
+  *_f = fopen( path, _mode );
+  if ( *_f == NULL ) {
+    printf( "binding: ERROR: Failed to open FIFO '%s'\n", path );
+    free( path );
+    return 3;
+  }
+
+  free( path );
+  return 0;
+}
