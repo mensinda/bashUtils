@@ -225,6 +225,7 @@ EOF
 
     echo -ne  "\n${returnType}bbind_funcCB_$funcName( struct bindingINFO *_inf, const char *_id"
 
+    local oldIsStruct="$isStruct"
     for (( i = 0; i < ${#argv[@]}; i++ )); do
       I="${argv[$i]}"
       opts=''
@@ -250,7 +251,9 @@ EOF
       argProps["$i:type"]="$I"
       argProps["$i:pointer"]="$tmp"
       argProps["$i:opts"]="${opts}"
+      argProps["$i:isStruct"]="$isStruct"
     done
+    isStruct="$oldIsStruct"
 
     echo " ) {"
 
@@ -281,7 +284,7 @@ EOF
         echo '  *retP = bbind_newCALL();'
         echo '  ret = *retP;'
         (( j == 0 )) && echo '  out = ret;'
-        $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" '' 'true'
+        $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" '' 'true' "${argProps[$i:isStruct]}"
         echo "  ret->isPTR = '1';"
         echo '  retP = &ret->next;'
         j=1
@@ -291,7 +294,7 @@ EOF
       echo '  *retP = bbind_newCALL();'
       echo '  ret = *retP;'
       (( j == 0 )) && echo '  out = ret;'
-      $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I" 'false'
+      $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I" 'false' "${argProps[$i:isStruct]}"
       echo "  ret->isPTR = '0';"
       echo '  retP = &ret->next;'
       j=1
@@ -330,7 +333,7 @@ EOF
       echo "  $returnType ${tmp}ret;"
       echo "  if ( retVal->isPTR == '1' ) {"
       echo -n "    retType = "
-      $1 . bbind_genCastFromChar "$returnType" "$tmp" "retVal->data"
+      $1 . bbind_genCastFromChar "$returnType" "$tmp" "retVal->data" "$isStruct"
       echo -n '  }'
       if [[ "$opts" == *"!"* || "$opts" == *":"* ]]; then
         echo ''
@@ -338,7 +341,7 @@ EOF
         echo ' else {'
         if (( isStruct == 0 )); then
           echo -n "    ${tmp}retType = "
-          $1 . bbind_genCastFromChar "$returnType" "" "retVal->data"
+          $1 . bbind_genCastFromChar "$returnType" "" "retVal->data" "$isStruct"
         else
           echo "    printf( \"binding: ERROR: struct inputs MUST be pointers!\" );"
           echo "    return 2;"
@@ -348,7 +351,7 @@ EOF
       echo ''
     elif (( j == 0 )); then
       echo -n "  $returnType ${tmp}retType = "
-      $1 . bbind_genCastFromChar "$returnType" "$tmp" "retVal->data"
+      $1 . bbind_genCastFromChar "$returnType" "$tmp" "retVal->data" "$isStruct"
     fi
 
     echo ''
@@ -500,7 +503,7 @@ EOF
 
         # No strings (int, etc)
         if (( ${#tmp} > 0 && j == 0 )); then
-          if (( isStruct == 0 )); then
+          if (( isStruct == 0 || isStruct == 2 )); then
             echo "  $I value_arg$i;"
             echo "  $I ${tmp}arg$i = ${tmp//\*/&}value_arg$i;"
           else
@@ -508,15 +511,15 @@ EOF
           fi
           echo "  if ( _arg->isPTR == '1' ) {"
           echo -n "    arg$i = "
-          $1 . bbind_genCastFromChar "$I" "$tmp" "_arg->data"
+          $1 . bbind_genCastFromChar "$I" "$tmp" "_arg->data" "$isStruct"
           echo -n '  }'
           if [[ "$opts" == *"!"* || "$opts" == *":"* ]]; then
             echo ''
           else
             echo ' else {'
-            if (( isStruct == 0 )); then
+            if (( isStruct == 0 || isStruct == 2 )); then
               echo -n "    ${tmp}arg$i = "
-              $1 . bbind_genCastFromChar "$I" "" "_arg->data"
+              $1 . bbind_genCastFromChar "$I" "" "_arg->data" "$isStruct"
             else
               echo "    printf( \"binding: ERROR: struct inputs MUST be pointers!\" );"
               echo "    return 2;"
@@ -526,7 +529,7 @@ EOF
           echo ''
         elif (( j == 0 )); then
           echo -n "  $I ${tmp}arg$i = "
-          $1 . bbind_genCastFromChar "$I" "$tmp" "_arg->data"
+          $1 . bbind_genCastFromChar "$I" "$tmp" "_arg->data" "$isStruct"
         fi
         echo '  _arg = _arg->next;'
         echo ''
@@ -608,7 +611,7 @@ EOF
         echo ''
         echo "        b_arg${i}[c_arg${i}] = '\0';"
         echo -n "        arg$i[C_arg$i] = "
-        $1 . bbind_genCastFromChar "${argProps[$i:type]}" "" "b_arg${i}"
+        $1 . bbind_genCastFromChar "${argProps[$i:type]}" "" "b_arg${i}" "$isStruct"
         echo ''
         echo "        b_arg$i[c_arg${i}] = *worker$i;"
         echo "        c_arg$i = 0;"
@@ -628,7 +631,7 @@ EOF
         echo ''
         echo "      b_arg$i[c_arg$i] = '\0';"
         echo -n "      arg$i[C_arg$i] = "
-        $1 . bbind_genCastFromChar "${argProps[$i:type]}" "" "b_arg${i}"
+        $1 . bbind_genCastFromChar "${argProps[$i:type]}" "" "b_arg${i}" "$isStruct"
         echo "      C_arg$i++;"
         echo '    }'
         echo "    if ( C_arg$i != arg$I ) {"
@@ -688,17 +691,17 @@ EOF
         echo ''
         echo '  *retP = bbind_newCALL();'
         echo '  ret = *retP;'
-        $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" '' 'true'
+        $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" '' 'true' "${argProps[$i:isStruct]}"
         echo "  ret->isPTR = '1';"
         echo '  retP = &ret->next;'
       fi
 
-      [[ "${argProps[$i:isStruct]}" != '0' ]] && continue
+      [[ "${argProps[$i:isStruct]}" == '1' ]] && continue
 
       echo ''
       echo '  *retP = bbind_newCALL();'
       echo '  ret = *retP;'
-      $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I" 'false'
+      $1 . bbind_genCast2Char "${argProps[$i:type]}" "${argProps[$i:pointer]}" "arg$i" "$I" 'false' "${argProps[$i:isStruct]}"
       echo "  ret->isPTR = '0';"
       echo '  retP = &ret->next;'
     done
