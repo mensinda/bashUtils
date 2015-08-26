@@ -6,7 +6,7 @@ BASHBinding::bbind_compile() {
   programRequired 'make'
 
   local path sourcePath
-  path="$($1 . libPath)"
+  path="$($1 . bbind_libPath)"
   sourcePath="$(dirname "${BASH_SOURCE[0]}")"
 
   msg1 "Compiling binding '$($1 classname)'"
@@ -39,8 +39,8 @@ BASHBinding::bbind_compile() {
 
   [ ! -x 'binding' ] && die "Unable to find binding executable! (The main exe MUST be 'binding' for autocompile to work)"
 
-  $1 . libPath    "$PWD/binding"
-  $1 . isCompiled 'true'
+  $1 . bbind_execPath   "$PWD/binding"
+  $1 . bbind_isCompiled true
 
   cd - &> /dev/null
 }

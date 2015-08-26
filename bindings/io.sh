@@ -6,7 +6,7 @@ BASHBinding::bbind_readCallback() {
 
   declare -a argv
 
-  fifoDir="$($1 . fifoDir)"
+  fifoDir="$($1 . bbind_fifoDir)"
 
   [ -f "$fifoDir/tmp_func_def" ] && die "Temporary function definition file already exists"
 
@@ -27,7 +27,7 @@ BASHBinding::bbind_readCallback() {
         ;;
       i)
         read -d ';' size
-        $1 . isInit 'true'
+        $1 . bbind_isInit 'true'
         FIFOcontinue "$fifoDir/wait_init_FIFO"
         ;;
       C)
@@ -72,7 +72,7 @@ BASHBinding::bbind_readCallback() {
 BASHBinding::bbind_sendReturn() {
   argsRequired 3 $#
   local fifoDir ret
-  fifoDir="$($1 . fifoDir)"
+  fifoDir="$($1 . bbind_fifoDir)"
   if [ ! -p "$fifoDir/$2" ]; then
     warning "Unable to return: '$fifoDir/$2' is not a FIFO"
     return

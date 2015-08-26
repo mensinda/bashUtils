@@ -2,15 +2,15 @@
 
 BASHBinding::bbind_start() {
   argsRequired 1 $#
-  [[ "$($1 . isCompiled)" != 'true' ]] && die "Not compiled!"
+  [[ "$($1 . bbind_isCompiled)" != 'true' ]] && die "Not compiled!"
   local fifoDir line fIn fIndex fName className
-  fifoDir="$($1 . fifoDir)"
+  fifoDir="$($1 . bbind_fifoDir)"
   className="$($1 classname)"
 
-  $($1 . libPath) "$($1 . fifoDir)" &
-  $1 . bindingThread "$!"
+  $($1 . bbind_execPath) "$($1 . bbind_fifoDir)" &
+  $1 . bbind_bindingThread "$!"
 
-  exec 100>"$($1 . fifoDir)/bindingCALL"
+  exec 100>"$fifoDir/bindingCALL"
 
   $1 . bbind_readCallback < "$fifoDir/shellCALL" 4>&100 &
   $1 . bbind_readCallbackThread "$!"
@@ -47,19 +47,19 @@ BASHBinding::bbind_start() {
   done < "$fifoDir/tmp_func_def"
   rm "$fifoDir/tmp_func_def"
 
-  $1 . isStarted     'true'
+  $1 . bbind_isStarted     'true'
 }
 
 BASHBinding::bbind_stop() {
   argsRequired 1 $#
-  [[ "$($1 . isStarted)" != 'true' ]] && return
-  $1 . isStarted 'false'
+  [[ "$($1 . bbind_isStarted)" != 'true' ]] && return
+  $1 . bbind_isStarted 'false'
 
   echo 'E' 1>&100
 
   # Closing pipes
   exec 100>&-
 
-  wait "$($1 . bindingThread)"
+  wait "$($1 . bbind_bindingThread)"
   wait "$($1 . bbind_readCallbackThread)"
 }

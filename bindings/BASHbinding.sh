@@ -2,15 +2,15 @@
 
 class BASHBinding
   private:
-    -- libPath
-    -- fifoDir
+    -- bbind_libPath
+    -- bbind_execPath
+    -- bbind_fifoDir
 
-    -- isCompiled
-    -- isStarted
-    -- isInit
+    -- bbind_isCompiled
+    -- bbind_isStarted
+    -- bbind_isInit
 
-    -- bindingThread
-    -- bbind_readReturnThread
+    -- bbind_bindingThread
     -- bbind_readCallbackThread
 
     :: bbind_readReturn
@@ -34,6 +34,7 @@ class BASHBinding
     :: bbind_stop
 
     :: bbind_getIsInit
+    :: bbind_getIsCompiled
 
     :: BASHBinding
     :: ~BASHBinding

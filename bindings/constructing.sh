@@ -7,18 +7,25 @@ BASHBinding::BASHBinding() {
 
   [ ! -e "$2" ] && die "Path '$2' does not exist"
   if [ -d "$2" ]; then
-    $1 . isCompiled 'false'
+    $1 . bbind_isCompiled 'false'
     [ ! -f "$2/CMakeLists.txt" ] && die "unable to find build files"
   elif [ -f "$2" ]; then
-    $1 . isCompiled 'true'
+    $1 . bbind_isCompiled 'true'
   else
     die "Invalid binding path '$2'"
   fi
 
-  $1 . libPath   "$(readlink -f "$2")"
-  $1 . fifoDir   "$(readlink -f "$3")"
-  $1 . isStarted 'false'
-  $1 . isInit    'false'
+  $1 . bbind_libPath   "$(readlink -f "$2")"
+  $1 . bbind_fifoDir   "$(readlink -f "$3")"
+  $1 . bbind_isStarted 'false'
+  $1 . bbind_isInit    'false'
+
+  if [ -x "$(readlink -f "$2")/build/binding" ]; then
+    $1 . bbind_execPath "$(readlink -f "$2")/build/binding"
+    $1 . bbind_isCompiled true
+  else
+    $1 . bbind_isCompiled false
+  fi
 
   local i
   for i in {binding,shell}CALL; do
@@ -31,8 +38,8 @@ BASHBinding::BASHBinding() {
 BASHBinding::~BASHBinding() {
   argsRequired 1 $#
   local i dir started
-  dir="$($1 . fifoDir)"
-  started="$($1 . isStarted)"
+  dir="$($1 . bbind_fifoDir)"
+  started="$($1 . bbind_isStarted)"
 
   [[ "$started" == 'true' ]] && $1 . bbind_stop
 
@@ -42,5 +49,17 @@ BASHBinding::~BASHBinding() {
 }
 
 BASHBinding::bbind_getIsInit() {
-  $1 . isInit
+  if [[ "$($1 . bbind_isInit)" == 'true' ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+BASHBinding::bbind_getIsCompiled() {
+  if [[ "$($1 . bbind_isCompiled)" == 'true' ]]; then
+    return 0
+  else
+    return 1
+  fi
 }
