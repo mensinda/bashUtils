@@ -119,9 +119,9 @@ vec1 destruct
 
 # Bash C bindings
 
-BASHutils provides a (base) class to create bindings for c-style functions and callbacks via c-style function pointers.
+bashUtils provides a (base) class to create bindings for c-style functions and callbacks via c-style function pointers.
 
-BASHutils uses a c program running in background to call the c functions.
+bashUtils uses a c program running in background to call the c functions.
 This program can be automatically generated with a simple function definition file (bind.def) in the binding root directory.
 
 Short example:
@@ -142,7 +142,7 @@ binding destruct
 
 ```
 
-[Here](mensinda/bindTest) is a working example with a simple c lib.
+[Here](https://github.com/mensinda/bindTest) is a working example with a simple c lib.
 
 ## Function definition file Syntax
 
