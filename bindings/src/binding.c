@@ -469,11 +469,11 @@ struct bindingCALL *generateCALLBACK( struct bindingINFO *_inf,
 
   for ( size_t i = 0; i < metadataSize; i++ ) {
     metadata[i] = (char)( 33 + rand() % 90 );
-    if ( metadata[i] == '/' )
+    if ( metadata[i] == '/' || metadata[i] == ' ' )
       metadata[i]++;
   }
 
-  metadata[metadataSize + 1] = '\0';
+  metadata[metadataSize] = '\0';
 
   strcpy( FIFOpath, _inf->fifoDir );
   strcat( FIFOpath, "/" );
@@ -515,6 +515,31 @@ struct bindingCALL *generateCALLBACK( struct bindingINFO *_inf,
 
   int bSize = snprintf( NULL, 0, "%lu;%s%lu;%s%s", idLen, _id, metadataSize, metadata, outStr );
   fprintf( _inf->sCall, "C%i;%lu;%s%lu;%s%s", bSize, idLen, _id, metadataSize, metadata, outStr );
+  fflush( _inf->sCall );
+
+  FILE *fifo;
+  openFIFO( _inf->fifoDir, "r", metadata, &fifo );
+
+  size_t bufferSize = 10, i;
+  int ch;
+  char *buffer = malloc( bufferSize );
+
+  for ( i = 0; ( ch = fgetc( fifo ) ) != EOF; i++ ) {
+    if ( i == bufferSize ) {
+      bufferSize += 5;
+      buffer = realloc( buffer, bufferSize );
+    }
+    buffer[i] = ch;
+  }
+  buffer[i] = '\0';
+  ret = bbind_newCALL();
+  ret->isPTR = buffer[0];
+  ret->length = strlen( buffer ) - 2;
+  ret->data = malloc( ret->length + 1 );
+  strncpy( ret->data, buffer + 2, ret->length + 1 );
+
+  free( buffer );
+  fclose( fifo );
 
 cleanup:
   remove( FIFOpath );

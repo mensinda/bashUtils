@@ -2,6 +2,9 @@
 
 BASHBinding::bbind_readCallback() {
   local char size fName fifoDir
+  local idLen id metadataSize metadata isPTR argLen arg fName tmp
+
+  declare -a argv
 
   fifoDir="$($1 . fifoDir)"
 
@@ -30,12 +33,57 @@ BASHBinding::bbind_readCallback() {
       C)
         read -d ';' size
         read -N $size string
-        msg1 "C: '$string'"
+        idLen="${string/%;*}"
+        string="${string/#+([0-9]);}"
+        id="${string:0:$idLen}"
+        string="${string:$idLen}"
+
+        metadataSize="${string/%;*}"
+        string="${string/#+([0-9]);}"
+        metadata="${string:0:$metadataSize}"
+        string="${string:$metadataSize}"
+
+        argv=()
+
+        while [[ "$string" == *","*":"* ]]; do
+          isPTR="${string:0:1}"
+          string="${string:2}"
+          argLen="${string/%:*}"
+          string="${string/#+([0-9]):}"
+          arg="${string:0:$argLen}"
+          string="${string:$argLen}"
+          [[ "$isPTR" == '1' ]] && arg="$(echo -e "\x01PTR")$arg"
+          argv+=( "$arg" )
+        done
+        fName="${id/% *}"
+        tmp="$(type -t "$fName")" &> /dev/null
+        if [[ "$?" != 0 || "$tmp" != "function" ]]; then
+          warning "Undefined BASH callback $fName (ID: '$id')"
+          continue
+        fi
+        $id "$1 . bbind_sendReturn $metadata" "${argv[@]}"
         ;;
       E) return ;;
       *) warning "Unknown command -- call -- '$char'"
     esac
   done
+}
+
+BASHBinding::bbind_sendReturn() {
+  argsRequired 3 $#
+  local fifoDir ret
+  fifoDir="$($1 . fifoDir)"
+  if [ ! -p "$fifoDir/$2" ]; then
+    warning "Unable to return: '$fifoDir/$2' is not a FIFO"
+    return
+  fi
+  if [[ "$3" =~ ^$'\x01PTR'[0-9]+$ ]]; then
+    ret="${3/#*PTR}"
+    ret="1:$ret"
+  else
+    ret="0:$3"
+  fi
+  printf "%s" "$ret" > "$fifoDir/$2"
 }
 
 BASHBinding::bbind_sendCALL() {

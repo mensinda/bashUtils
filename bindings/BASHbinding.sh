@@ -23,6 +23,7 @@ class BASHBinding
 
   protected:
     :: bbind_sendCALL
+    :: bbind_sendReturn
 
   public:
     :: bbind_compile
