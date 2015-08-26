@@ -6,6 +6,14 @@ Sourcing the loader.sh script and running the `loadBashUtils` function will give
 
 NOTE: Some functions use global variables. Variable names starting with `__CLASS` or `__INTERNAL` should be avoided
 
+# Content
+ - [Object Oriented BASH](#object-oriented-bash)
+   - [Example](#example)
+   - [Object operators](#object-operators)
+ - [Bash C bindings](#bash-c-bindings)
+   - [Function definition file Syntax](#function-definition-file-syntax)
+ - [Logging functions](#logging)
+ - [Util functions](#utils)
 
 # Object Oriented BASH
 
@@ -108,6 +116,114 @@ vec1 destruct
 | hasAttr [attr]     | Returns 0 if class has the attribute [attr]                  |
 | isVisible [a/f]    | Returns 0 if the attribute / function is *currently* visible |
 | destruct           | Destructs the object and runs the (optional) destructor      |
+
+# Bash C bindings
+
+BASHutils provides a (base) class to create bindings for c-style functions and callbacks via c-style function pointers.
+
+BASHutils uses a c program running in background to call the c functions.
+This program can be automatically generated with a simple function definition file (bind.def) in the binding root directory.
+
+Short example:
+```bash
+class Bind1 BASHBinding # Inheriting everything from BASHBinding
+  public:
+    :: f1 # f1 is a c function
+ssalc
+
+Bind1 binding /path/to/binding/source/root /path/to/an/empty/directory/for/FIFOs
+binding . bbind_compile
+binding . bbind_start
+
+binding . f1 "arg1"
+msg1 "Return value of c function f1: $OUT_0"
+
+binding destruct
+
+```
+
+[Here](mensinda/bindTest) is a working example with a simple c lib.
+
+## Function definition file Syntax
+
+This file is used to automatically generate the c program. It contains all information about the function pointer types and functions.
+
+NOTE: The filename has to be `bind.def`.
+
+### Section 1: Config
+
+Commands:
+
+#### subDir
+
+Usage:
+
+```
+subdir: [<name>] <path>
+# Example:
+subdir: [lib1] ./lib1
+```
+
+Adds the `<path>` CMake subdirectory and `<path>` to the include directories. It will also link the final
+program against `<name>`.
+
+NOTE: This command assumes that `<name>` is a library added with the CMake command `add_library`!
+
+### includeDir
+
+Usage:
+
+```
+includeDir: <path>
+# Example:
+includeDir: /ust/local/include
+```
+
+Adds `<path>` to the include directories.
+
+### include
+
+Usage:
+
+```
+include: <filename>
+# Example:
+include: lib1.h
+```
+
+Adds `#include <filename>` to the c file.
+
+### Section 2: Callback types [optional]
+
+This section starts with the command `beginCallback:`.
+
+Just copy and paste the typedef into this section (without the `typedef` keyword, argument *names* and the ';')
+All typedefs will be automatically resolved.
+
+### Section 3: Functions
+
+This section starts with the command `beginBinding:`.
+
+Just copy and paste the function prototypes into this section (without the argument *names* and the ';')
+All typedefs will be automatically resolved.
+
+Every argument contains metadata (default: in). Metadata can be manualy set inside `|` chars.
+
+|   matadata  |                                        Description                                         |
+|-------------|--------------------------------------------------------------------------------------------|
+| `fPTR`      | The argument type is a function pointer defined in section 2                               |
+| `in`        | Requires input from BASH                                                                   |
+| `out`       | Mainly for pointers. Will generate a OUT var for the pointer and the data in bash          |
+| `:<argnum>` | The Argument expects an array with the size of the arg index `<argnum>` (return type is 0) |
+| `!<argnum>` | Same as `:<argnum>` but `<argnum>` can be an output only type (return)                     |
+| `DUMMY`     | Wont be used to call the function but can be used as input for `:<argnum>`                 |
+
+Usage:
+```
+void func( int *|<metadata goes here>| )
+Example:
+void func( int * |in out :2|, size_t )
+```
 
 # Logging
 
