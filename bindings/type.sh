@@ -40,7 +40,7 @@ BASHBinding::bbind_genCast2Char() {
           # single char
           echo "  ret->length = sizeof( char );"
           echo '  ret->data   = malloc( ret->length );'
-          echo "  *ret->data  = ${ptr}${name}"
+          echo "  *ret->data  = ${ptr}${name};"
           return
         else
           # string

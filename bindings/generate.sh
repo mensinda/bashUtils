@@ -5,7 +5,7 @@ BASHBinding::bbind_generateFiles() {
   fileRequired "$2" require
 
   local dir hFile cFile tFile cmakeFile mainFile line lineCounter=0 lineCounterOld OIFS
-  local strINCLUDE strCMAKE
+  local strINCLUDE strLINK strCMAKE
   local inludeList
   local includeDirs=() subDirs=()
   local returnType funcName argList argList2 i I j I_OLD tmp opts isStruct
@@ -49,6 +49,10 @@ BASHBinding::bbind_generateFiles() {
         inludeList="$inludeList ${line/#include:*( )/}";
         strINCLUDE="$strINCLUDE\n#include <${line/#include:*( )/}>"
         msg3 "Adding include for '${line/#include:*( )/}'"
+        ;;
+      link)
+        strLINK="$strLINK ${line/#link:*( )/}"
+        msg3 "Linking against '${line/#link:*( )/}'"
         ;;
       includeDir)
         i="$(readlink -f "$dir/${line/#*:*( )}")"
@@ -99,7 +103,7 @@ include_directories( ${includeDirs[0]} )
 EOF
 
 echo -e "$strCMAKE" >> "$cmakeFile"
-echo "target_link_libraries( binding ${subDirs[*]} )" >> "$cmakeFile"
+echo "target_link_libraries( binding ${subDirs[*]} $strLINK )" >> "$cmakeFile"
 
 
 cat << EOF > "$mainFile"
@@ -387,7 +391,7 @@ EOF
 
     argList2=''
     funcName="${line/%*( )(*}"
-    returnType="${funcName/%*( )+([a-zA-Z0-9])}"
+    returnType="${funcName/%*( )+([^ *])}"
     funcName="${funcName/#* *(\*)}"
     argList="${line/#*[(]*( )}"
     argList="${argList/%*( ))*}"
@@ -452,7 +456,6 @@ EOF
       echo ''
       echo "  /* parameter $i; type: '$I'; ptr: '$tmp'; mata: '$opts' */"
       echo "  struct bindingCALL *s_arg$i = _arg;"
-      echo ''
 
       if [[ "$opts" == *"FPTR"* ]]; then
         echo '  if ( _arg == NULL ) {'
@@ -463,6 +466,7 @@ EOF
         echo "    printf( \"binding: ERROR: func: $funcName _arg->data is NULL\n\" );"
         echo '    return 2;'
         echo '  }'
+        echo ''
         (( inCounter++ ))
         echo "  $I ${tmp}arg$i = ($I ${tmp})bbind_genFunctionPointer( _inf, _arg->data, BBIND_CALLBACK_HELPER_$I );"
         [[ "$opts" != *"DUMMY"* ]] && argList2="$argList2 arg${i},"
@@ -479,6 +483,7 @@ EOF
         echo "    printf( \"binding: ERROR: func: $funcName _arg->data is NULL\n\" );"
         echo '    return 2;'
         echo '  }'
+        echo ''
         (( inCounter++ ))
         j=0
 
