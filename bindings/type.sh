@@ -30,7 +30,7 @@ BASHBinding::bbind_genCast2Char() {
   argsRequired 7 $#
   local t="$2" ptr="$3" name="$4" size="$5" isPTR="$6" isStruct="$7"
   local snprintfType i
-  echo "  /* t: '$t'; ptr: '$ptr'; name: '$name'; size='$size'; isPTR: '$isPTR' */"
+  echo "  /* t: '$t'; ptr: '$ptr'; name: '$name'; size='$size'; isPTR: '$isPTR'; isStruct: '$isStruct' */"
   if [[ "$isPTR" == 'true' ]]; then
     echo "  ret->length = snprintf( NULL, 0, \"%lu\", (unsigned long int)$name );"
     echo "  ret->data   = malloc( ret->length + 1 );"
@@ -131,7 +131,7 @@ struct workerEnd<false, T> {
 };
 
 template <typename T, int N>
-struct worker<false, T, N> : workerEnd<std::is_fundamental<T>::value, T> {
+struct worker<false, T, N> : workerEnd<std::is_fundamental<T>::value && !std::is_void<T>::value, T> {
   typedef T type;
   static const int counter = N;
 };

@@ -211,7 +211,7 @@ Every argument contains metadata (default: in). Metadata can be manualy set insi
 
 |   matadata  |                                        Description                                         |
 |-------------|--------------------------------------------------------------------------------------------|
-| `fPTR`      | The argument type is a function pointer defined in section 2                               |
+| `FPTR`      | The argument type is a function pointer defined in section 2                               |
 | `in`        | Requires input from BASH                                                                   |
 | `out`       | Mainly for pointers. Will generate a OUT var for the pointer and the data in bash          |
 | `:<argnum>` | The Argument expects an array with the size of the arg index `<argnum>` (return type is 0) |

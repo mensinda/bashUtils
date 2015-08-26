@@ -238,7 +238,11 @@ EOF
       I="${I//|*|}"   # removing opts
       I_OLD="$I"
 
-      [[ "$I" != 'void' ]] && I="$($1 . bbind_resolveTypedef "$I" "$inludeList" "$dir" "${includeDirs[*]}")"
+      isStruct=0
+      if [[ "$I" != 'void' ]]; then
+        I="$($1 . bbind_resolveTypedef "$I" "$inludeList" "$dir" "${includeDirs[*]}")"
+        isStruct=$?
+      fi
       tmp="${I//[^*]/}"
 
       I="${I//\*}"    # removing pointers
@@ -290,6 +294,9 @@ EOF
         j=1
       fi
 
+      [[ "${argProps[$i:isStruct]}" ==  '1'     ]] && continue # struct
+      [[ "${argProps[$i:type]}"     == *'void'* ]] && continue
+
       echo ''
       echo '  *retP = bbind_newCALL();'
       echo '  ret = *retP;'
@@ -304,6 +311,13 @@ EOF
 
     returnType="${returnType/#*( )}"
     returnType="${returnType/%*( )}"
+
+    if [[ "$returnType" == 'void' && "$tmp" == '' ]]; then
+      echo '  generateCALLBACK( _inf, _id, out );'
+      echo '}'
+      echo "#define BBIND_CALLBACK_HELPER_$funcName \"bbind_funcCB_$funcName\", \"$returnType\", \"$tmp\", \"$I\""
+      continue
+    fi
 
     echo ''
     echo '  struct bindingCALL *retVal = NULL;'
@@ -441,7 +455,7 @@ EOF
       I_OLD="$I"
 
       isStruct=0
-      if [[ "$I" != 'void' ]]; then
+      if [[ "$I" != 'void' && "$opts" != *"FPTR"* ]]; then
         I="$($1 . bbind_resolveTypedef "$I" "$inludeList" "$dir" "${includeDirs[*]}")"
         isStruct=$?
       fi
@@ -503,7 +517,7 @@ EOF
 
         # No strings (int, etc)
         if (( ${#tmp} > 0 && j == 0 )); then
-          if (( isStruct == 0 || isStruct == 2 )); then
+          if [[ ( "$isStruct" == '0' || "$isStruct" == '2' ) && "$I" != *'void'* ]]; then
             echo "  $I value_arg$i;"
             echo "  $I ${tmp}arg$i = ${tmp//\*/&}value_arg$i;"
           else
@@ -517,7 +531,7 @@ EOF
             echo ''
           else
             echo ' else {'
-            if (( isStruct == 0 || isStruct == 2 )); then
+            if [[ ( "$isStruct" == '0' || "$isStruct" == '2' ) && "$I" != *'void'* ]]; then
               echo -n "    ${tmp}arg$i = "
               $1 . bbind_genCastFromChar "$I" "" "_arg->data" "$isStruct"
             else
@@ -585,6 +599,7 @@ EOF
           if [[ "$j" == 'char' ]]; then
             echo '    /*  -- Copying string */'
             echo "    strncpy( arg$i, s_arg${i}->data, sizeof( ${argProps[$i:type]} ) * (${argProps[$I:pointer]}arg$I) );"
+            echo "  }"
             j='-1'
             break
           fi
@@ -696,7 +711,8 @@ EOF
         echo '  retP = &ret->next;'
       fi
 
-      [[ "${argProps[$i:isStruct]}" == '1' ]] && continue
+      [[ "${argProps[$i:isStruct]}" ==  '1'     ]] && continue
+      [[ "${argProps[$i:type]}"     == *'void'* ]] && continue
 
       echo ''
       echo '  *retP = bbind_newCALL();'
