@@ -451,18 +451,18 @@ EOF
 
       echo ''
       echo "  /* parameter $i; type: '$I'; ptr: '$tmp'; mata: '$opts' */"
-      echo '  if ( _arg == NULL ) {'
-      echo "    printf( \"binding: ERROR: func: $funcName _arg is NULL\n\" );"
-      echo '    return 1;'
-      echo '  }'
-      echo '  if ( _arg->data == NULL ) {'
-      echo "    printf( \"binding: ERROR: func: $funcName _arg->data is NULL\n\" );"
-      echo '    return 2;'
-      echo '  }'
       echo "  struct bindingCALL *s_arg$i = _arg;"
       echo ''
 
       if [[ "$opts" == *"FPTR"* ]]; then
+        echo '  if ( _arg == NULL ) {'
+        echo "    printf( \"binding: ERROR: func: $funcName _arg is NULL\n\" );"
+        echo '    return 1;'
+        echo '  }'
+        echo '  if ( _arg->data == NULL ) {'
+        echo "    printf( \"binding: ERROR: func: $funcName _arg->data is NULL\n\" );"
+        echo '    return 2;'
+        echo '  }'
         (( inCounter++ ))
         echo "  $I ${tmp}arg$i = ($I ${tmp})bbind_genFunctionPointer( _inf, _arg->data, BBIND_CALLBACK_HELPER_$I );"
         [[ "$opts" != *"DUMMY"* ]] && argList2="$argList2 arg${i},"
@@ -471,6 +471,14 @@ EOF
       ## IN
       ##
       elif [[ "$opts" == *"in"* ]]; then
+        echo '  if ( _arg == NULL ) {'
+        echo "    printf( \"binding: ERROR: func: $funcName _arg is NULL\n\" );"
+        echo '    return 1;'
+        echo '  }'
+        echo '  if ( _arg->data == NULL ) {'
+        echo "    printf( \"binding: ERROR: func: $funcName _arg->data is NULL\n\" );"
+        echo '    return 2;'
+        echo '  }'
         (( inCounter++ ))
         j=0
 
