@@ -330,6 +330,17 @@ EOF
     if [[ "$returnType" == 'void' && "$tmp" == '' ]]; then
       echo '  generateCALLBACK( _inf, _id, out );'
       echo '}'
+
+      for (( i = 0; i < ${#argv[@]}; i++ )); do
+        if (( i == 0 )); then
+          tmp="${argProps[$i:type]} ${argProps[$i:pointer]}_$i"
+          I="_$i"
+        else
+          tmp="${tmp}, ${argProps[$i:type]} ${argProps[$i:pointer]}_$i"
+          I="$I, _$i"
+        fi
+      done
+
       echo "#define BBIND_CALLBACK_HELPER_$funcName \"bbind_funcCB_$funcName\", \"$returnType\", \"$tmp\", \"$I\""
       continue
     fi
@@ -391,10 +402,10 @@ EOF
     echo ''
     for (( i = 0; i < ${#argv[@]}; i++ )); do
       if (( i == 0 )); then
-        tmp="${argProps[$i:type]} _$i"
+        tmp="${argProps[$i:type]} ${argProps[$i:pointer]}_$i"
         I="_$i"
       else
-        tmp="${tmp}, ${argProps[$i:type]} _$i"
+        tmp="${tmp}, ${argProps[$i:type]} ${argProps[$i:pointer]}_$i"
         I="$I, _$i"
       fi
     done
