@@ -13,6 +13,8 @@ BASHBinding::BASHBinding() {
   $1 . bbind_isStarted 'false'
   $1 . bbind_isInit    'false'
 
+  $1 . bbind_option_useGDB 'false'
+
   if [ -x "$(readlink -f "$2")/build/binding" ]; then
     $1 . bbind_execPath "$(readlink -f "$2")/build/binding"
     $1 . bbind_isCompiled true
