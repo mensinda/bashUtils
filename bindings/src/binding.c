@@ -171,7 +171,7 @@ int bbind_addFunction( struct bindingINFO *_inf,
   _inf->numFuncs++;
 
   struct bindingFUNC *current = bbind_newFUNC();
-  current->name = malloc( strlen( _name ) * sizeof( char ) );
+  current->name = malloc( ( strlen( _name ) + 1 ) * sizeof( char ) );
   strcpy( current->name, _name );
 
   current->fPTR = ptr;
