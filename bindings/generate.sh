@@ -600,7 +600,8 @@ EOF
           echo ''
           argList2="$argList2 ($I_OLD)&arg${i}/* Explicit cast to silent warnings */,"
         else
-          echo "  $I ${tmp}arg$i;"
+          echo "  $I ${tmp/#\*}vaule_out_arg$i;"
+          echo "  $I ${tmp}arg$i = &vaule_out_arg$i;"
           echo ''
           argList2="$argList2 arg${i},"
         fi

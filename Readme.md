@@ -143,6 +143,8 @@ binding destruct
 
 ```
 
+Setting `BASH_BINDING_START_WITH_GDB` to `'true'` will start the program with gdb.
+
 [Here](https://github.com/mensinda/bindTest) is a working example with a simple c lib.
 
 ## :warning: WARNING :warning:
@@ -154,7 +156,7 @@ binding destruct
 A pointer in BASH is represented as an unsigend integer (base 10) with the prefix `\x01PTR`.
 So it is *theoretically* possible to do pointer arithmetic in BASH!
 
-Because bashUtils supports low level c pointes your script might be partialy responsible for memory management. 
+Because bashUtils supports low level c pointes your script might be partialy responsible for memory management.
 You can even malloc and free memory in your script (if you write the binding)!
 
 I strongly recommend to avoid pointers whenever possible and to NEVER modify a pointer in BASH!
