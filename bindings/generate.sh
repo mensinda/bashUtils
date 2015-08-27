@@ -12,6 +12,7 @@ BASHBinding::bbind_generateFiles() {
   local inCounter=0 outCounter=0
   declare -a argv
   declare -A argProps
+  declare -A typeIndex
 
   dir="$(readlink -f "$(dirname "$2")")"
 
@@ -212,8 +213,15 @@ EOF
 
     isStruct=0
     if [[ "$returnType" != 'void' ]]; then
-      returnType="$($1 . bbind_resolveTypedef "$returnType" "$inludeList" "$dir" "${includeDirs[*]}")"
-      isStruct=$?
+      if [[ "${typeIndex[${returnType}::t]}" == "" ]]; then
+        typeIndex[${returnType}::t]="$($1 . bbind_resolveTypedef "$returnType" "$inludeList" "$dir" "${includeDirs[*]}")"
+        isStruct=$?
+        typeIndex[${returnType}::s]="$isStruct"
+        returnType="${typeIndex[${returnType}::t]}"
+      else
+        isStruct="${typeIndex[${returnType}::s]}"
+        returnType="${typeIndex[${returnType}::t]}"
+      fi
     fi
     tmp="${returnType//[^*]/}"
 
@@ -239,9 +247,16 @@ EOF
       I_OLD="$I"
 
       isStruct=0
-      if [[ "$I" != 'void' ]]; then
-        I="$($1 . bbind_resolveTypedef "$I" "$inludeList" "$dir" "${includeDirs[*]}")"
-        isStruct=$?
+      if [[ "$I" != 'void' && "$opts" != *"FPTR"* ]]; then
+        if [[ "${typeIndex[${I}::t]}" == "" ]]; then
+          typeIndex[${I}::t]="$($1 . bbind_resolveTypedef "$I" "$inludeList" "$dir" "${includeDirs[*]}")"
+          isStruct=$?
+          typeIndex[${I}::s]="$isStruct"
+          I="${typeIndex[${I}::t]}"
+        else
+          isStruct="${typeIndex[${I}::s]}"
+          I="${typeIndex[${I}::t]}"
+        fi
       fi
       tmp="${I//[^*]/}"
 
@@ -421,8 +436,15 @@ EOF
 
     isStruct=0
     if [[ "$returnType" != 'void' ]]; then
-      returnType="$($1 . bbind_resolveTypedef "$returnType" "$inludeList" "$dir" "${includeDirs[*]}")"
-      isStruct=$?
+      if [[ "${typeIndex[${returnType}::t]}" == "" ]]; then
+        typeIndex[${returnType}::t]="$($1 . bbind_resolveTypedef "$returnType" "$inludeList" "$dir" "${includeDirs[*]}")"
+        isStruct=$?
+        typeIndex[${returnType}::s]="$isStruct"
+        returnType="${typeIndex[${returnType}::t]}"
+      else
+        isStruct="${typeIndex[${returnType}::s]}"
+        returnType="${typeIndex[${returnType}::t]}"
+      fi
     fi
     tmp="${returnType//[^*]/}"
 
@@ -456,8 +478,15 @@ EOF
 
       isStruct=0
       if [[ "$I" != 'void' && "$opts" != *"FPTR"* ]]; then
-        I="$($1 . bbind_resolveTypedef "$I" "$inludeList" "$dir" "${includeDirs[*]}")"
-        isStruct=$?
+        if [[ "${typeIndex[${I}::t]}" == "" ]]; then
+          typeIndex[${I}::t]="$($1 . bbind_resolveTypedef "$I" "$inludeList" "$dir" "${includeDirs[*]}")"
+          isStruct=$?
+          typeIndex[${I}::s]="$isStruct"
+          I="${typeIndex[${I}::t]}"
+        else
+          isStruct="${typeIndex[${I}::s]}"
+          I="${typeIndex[${I}::t]}"
+        fi
       fi
       tmp="${I//[^*]/}"
 
