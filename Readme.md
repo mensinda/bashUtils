@@ -11,7 +11,7 @@ NOTE: Some functions use global variables. Variable names starting with `__CLASS
    - [Example](#example)
    - [Object operators](#object-operators)
  - [Bash C bindings](#bash-c-bindings)
-   - [WARNING - read this](#warning)
+   - [WARNING - read this](#warning-warning-warning)
    - [Function definition file Syntax](#function-definition-file-syntax)
  - [Logging functions](#logging)
  - [Util functions](#utils)
@@ -157,7 +157,7 @@ So it is *theoretically* possible to do pointer arithmetic in BASH!
 Because bashUtils supports low level c pointes your script might be partialy responsible for memory management. 
 You can even malloc and free memory in your script (if you write the binding)!
 
-I strongly recommend to avoid pointers whenever possible and to NEWVER modify a pointer in BASH!
+I strongly recommend to avoid pointers whenever possible and to NEVER modify a pointer in BASH!
 
 ## Function definition file Syntax
 
