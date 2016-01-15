@@ -16,19 +16,18 @@ __CLASS_checkVisibility() {
   __CLASS_checkExists "$1" "$2"
   (( $? != 0 )) && die "Class '$1' has no member '$2'"
 
-  local t tmp
-  eval "t=\"\${__CLASS_${1}_PROPERTIES[$2]}\""
-
-  echo "${t:1}"
+  local T tmp
+  eval "T=\"\${__CLASS_${1}_PROPERTIES[$2]}\""
+  eval "$4='${T:1}'"
 
   # Check visibility
   case "$3" in
     private)
-      tmp="${t:2}"
-      [[ "${t:0:1}" == "_" && "$tmp" != "$1" ]] && return 1 ;;
+      tmp="${T:2}"
+      [[ "${T:0:1}" == "_" && "$tmp" != "$1" ]] && return 1 ;;
     public)
-      [[ "${t:0:1}" == "-" ]] && return 1
-      [[ "${t:0:1}" == ":" ]] && return 1 ;;
+      [[ "${T:0:1}" == "-" ]] && return 1
+      [[ "${T:0:1}" == ":" ]] && return 1 ;;
     *) die "Internal error: unknown visibility '$3'" ;;
   esac
 
@@ -50,7 +49,7 @@ __CLASS_accessOBJ() {
 
   case "$3" in # operator
     .)
-      t="$(__CLASS_checkVisibility "$6" "$4" "$5")"
+      __CLASS_checkVisibility "$6" "$4" "$5" t
       (( $? != 0 )) && die "Can not access member '$4' of class '$1' (object: '$2')"
       case "${t:0:1}" in
         I)
@@ -65,8 +64,7 @@ __CLASS_accessOBJ() {
           [[ "$4" == "$1"  ]] && die "Can not access constructor of object '$2' directly"
           [[ "$4" == "~$1" ]] && die "Can not access destructor of object '$2' directly"
           func="${1}::${4}"
-          tmp="$(type -t "$func")" &> /dev/null
-          [[ "$?" != 0 || "$tmp" != "function" ]] && die "Member '$4' of class '$1' is undefined or not a function"
+          declare -f "$func" &> /dev/null || die "Member '$4' of class '$1' is undefined or not a function"
           "$func" "__CLASS_accessOBJprivate $1 $2 ${t:1}" "${@:7}"
           return $?
         ;;
@@ -74,6 +72,27 @@ __CLASS_accessOBJ() {
         *) die "Internal error: Unknown member type" ;;
       esac
       ;;
+
+    :)
+      __CLASS_checkVisibility "$6" "$4" "$5" t
+      (( $? != 0 )) && die "Can not access member '$4' of class '$1' (object: '$2')"
+      case "${t:0:1}" in
+        I)
+          if (( $# != 7 )); then
+            die "No local variable specified"
+          else
+            eval "$7=\${__CLASS_${1}_OBJECT_${2}[$4]}"   # get
+          fi
+        ;;
+
+        M)
+          die "Can only run get on attributes"
+        ;;
+
+        *) die "Internal error: Unknown member type" ;;
+      esac
+      ;;
+
 
     destruct)
       unset -f "$2" # object name
@@ -83,8 +102,7 @@ __CLASS_accessOBJ() {
         __CLASS_checkExists "$1" "~$I"
         if (( $? == 0 )); then
           func="${1}::~${I}"
-          tmp="$(type -t "$func")" &> /dev/null
-          [[ "$?" != 0 || "$tmp" != "function" ]] && die "Deconstructor of class '$I' is undefined or not a function"
+          declare -f "$func" &> /dev/null || die "Deconstructor of class '$I' is undefined or not a function"
           "$func" "__CLASS_accessOBJprivate $1 $2 $I"
         fi
       done
@@ -103,7 +121,7 @@ __CLASS_accessOBJ() {
       ;;
 
     isVisible)
-      __CLASS_checkVisibility "$6" "$4" "$5" > /dev/null
+      __CLASS_checkVisibility "$6" "$4" "$5" t
       return $?
       ;;
 

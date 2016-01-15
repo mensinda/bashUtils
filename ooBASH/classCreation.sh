@@ -10,8 +10,7 @@ class() {
     assertDoesNotContain "$1" ' '
   done
 
-  tmp="$(type -t "$1")"
-  [[ "$tmp" == 'function' ]] && die "Class '$1' already exists!"
+  declare -f "$func" &> /dev/null && die "Class '$1' already exists!"
 
   eval "$1() { __CLASS_createNewObject $1 \$*; }"
   declare -gA __CLASS_${1}_PROPERTIES
@@ -22,8 +21,7 @@ class() {
   eval "__CLASS_${1}_CONSTRUCTION_ORDER=( '$1' )"
 
   for i in "${@:2}"; do
-    tmp="$(type -t "$i")"
-    [[ "$?" != '0' || "$tmp" != 'function' ]] && die "Can not extend unkown class '$i'"
+    declare -f "$func" &> /dev/null || die "Can not extend unkown class '$i'"
     eval "__CLASS_${1}_CONSTRUCTION_ORDER+=( \"\${__CLASS_${i}_CONSTRUCTION_ORDER[@]}\" )"
     eval "
       for j in \"\${!__CLASS_${i}_PROPERTIES[@]}\"; do
@@ -65,8 +63,7 @@ __CLASS_createNewObject() {
   assertDoesNotContain "$1$2" ' '
   [ -n "$__CLASS_CURRENT_CLASS" ] && die "Can not create objects inside class definitions! (forgot ssalc?)"
 
-  tmp="$(type -t "$2")"
-  [[ "$tmp" == 'function' ]] && die "Object '$2' already exists!"
+  declare -f "$func" &> /dev/null && die "Object '$2' already exists!"
 
   local func tmp t size i I
   eval "size=\${#__CLASS_${1}_CONSTRUCTION_ORDER[@]}"
@@ -82,8 +79,7 @@ __CLASS_createNewObject() {
       fi
 
       func="${1}::${I}"
-      tmp="$(type -t "$func")" &> /dev/null
-      [[ "$?" != 0 || "$tmp" != "function" ]] && die "Constructor of class '$I' is undefined or not a function"
+      declare -f "$func" &> /dev/null || die "Constructor of class '$I' is undefined or not a function"
       "$func" "__CLASS_accessOBJprivate $1 $2 ${I}" "${@:3}"
     fi
   done
