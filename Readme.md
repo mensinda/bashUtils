@@ -11,6 +11,7 @@ NOTE: Some functions use global variables. Variable names starting with `__CLASS
    - [Example](#example)
    - [Object operators](#object-operators)
  - [Bash C bindings](#bash-c-bindings)
+   - [WARNING - read this](#warning-warning-warning)
    - [Function definition file Syntax](#function-definition-file-syntax)
  - [Logging functions](#logging)
  - [Util functions](#utils)
@@ -142,7 +143,23 @@ binding destruct
 
 ```
 
+Setting `BASH_BINDING_START_WITH_GDB` to `'true'` will start the program with gdb.
+
 [Here](https://github.com/mensinda/bindTest) is a working example with a simple c lib.
+
+## :warning: WARNING :warning:
+
+**WARNING To support c pointers bashUtils does some questionable casting!**
+
+(pointer -> size_t -> c string -> **Your Script** -> c string -> size_t -> pointer)
+
+A pointer in BASH is represented as an unsigend integer (base 10) with the prefix `\x01PTR`.
+So it is *theoretically* possible to do pointer arithmetic in BASH!
+
+Because bashUtils supports low level c pointes your script might be partialy responsible for memory management.
+You can even malloc and free memory in your script (if you write the binding)!
+
+I strongly recommend to avoid pointers whenever possible and to NEVER modify a pointer in BASH!
 
 ## Function definition file Syntax
 
@@ -200,6 +217,12 @@ This section starts with the command `beginCallback:`.
 Just copy and paste the typedef into this section (without the `typedef` keyword, argument *names* and the ';')
 All typedefs will be automatically resolved.
 
+Every argument cancontain metadata (default: none). Metadata can be set inside `|` chars.
+
+|   matadata  |                                        Description                                         |
+|-------------|--------------------------------------------------------------------------------------------|
+| `:<argnum>` | The Argument expects an array with the size of the arg index `<argnum>` (first arg is 0)   |
+
 ### Section 3: Functions
 
 This section starts with the command `beginBinding:`.
@@ -211,7 +234,7 @@ Every argument contains metadata (default: in). Metadata can be manualy set insi
 
 |   matadata  |                                        Description                                         |
 |-------------|--------------------------------------------------------------------------------------------|
-| `fPTR`      | The argument type is a function pointer defined in section 2                               |
+| `FPTR`      | The argument type is a function pointer defined in section 2                               |
 | `in`        | Requires input from BASH                                                                   |
 | `out`       | Mainly for pointers. Will generate a OUT var for the pointer and the data in bash          |
 | `:<argnum>` | The Argument expects an array with the size of the arg index `<argnum>` (return type is 0) |

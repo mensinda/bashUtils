@@ -6,19 +6,14 @@ BASHBinding::BASHBinding() {
   [ ! -d "$(readlink -f "$3")" ] && die "'$3' is not a directory"
 
   [ ! -e "$2" ] && die "Path '$2' does not exist"
-  if [ -d "$2" ]; then
-    $1 . bbind_isCompiled 'false'
-    [ ! -f "$2/CMakeLists.txt" ] && die "unable to find build files"
-  elif [ -f "$2" ]; then
-    $1 . bbind_isCompiled 'true'
-  else
-    die "Invalid binding path '$2'"
-  fi
+  [ ! -d "$2" ] && die "Invalid binding path '$2'"
 
   $1 . bbind_libPath   "$(readlink -f "$2")"
   $1 . bbind_fifoDir   "$(readlink -f "$3")"
   $1 . bbind_isStarted 'false'
   $1 . bbind_isInit    'false'
+
+  $1 . bbind_option_useGDB 'false'
 
   if [ -x "$(readlink -f "$2")/build/binding" ]; then
     $1 . bbind_execPath "$(readlink -f "$2")/build/binding"

@@ -7,7 +7,12 @@ BASHBinding::bbind_start() {
   fifoDir="$($1 . bbind_fifoDir)"
   className="$($1 classname)"
 
-  $($1 . bbind_execPath) "$($1 . bbind_fifoDir)" &
+  if [[ "$($1 . bbind_option_useGDB)" == 'true' ]]; then
+    programRequired 'gdb'
+    gdb -q -ex run -ex bt full --args "$($1 . bbind_execPath)" "$($1 . bbind_fifoDir)" &
+  else
+    $($1 . bbind_execPath) "$($1 . bbind_fifoDir)" &
+  fi
   $1 . bbind_bindingThread "$!"
 
   exec 100>"$fifoDir/bindingCALL"

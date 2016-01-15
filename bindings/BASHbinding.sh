@@ -26,6 +26,8 @@ class BASHBinding
     :: bbind_sendReturn
 
   public:
+    -- bbind_option_useGDB
+
     :: bbind_compile
 
     :: bbind_resolveTypedef

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASHBinding::bbind_genCastFromChar() {
-  argsRequired 4 $#
+  argsRequired 5 $#
   local i
 
   if (( ${#3} > 0 )); then
@@ -11,6 +11,10 @@ BASHBinding::bbind_genCastFromChar() {
       echo -e "($2 $3)$4;"
     fi
   else
+    if [[ "$5" == '2' ]]; then
+      echo "($2)strtol( $4, NULL, 10 );"
+      return 0
+    fi
     for i in $2; do
       case "$i" in
         char)   echo "($2)*$4;";                     return 0 ;;
@@ -23,10 +27,10 @@ BASHBinding::bbind_genCastFromChar() {
 }
 
 BASHBinding::bbind_genCast2Char() {
-  argsRequired 6 $#
-  local t="$2" ptr="$3" name="$4" size="$5" isPTR="$6"
+  argsRequired 7 $#
+  local t="$2" ptr="$3" name="$4" size="$5" isPTR="$6" isStruct="$7"
   local snprintfType i
-  echo "  /* t: '$t'; ptr: '$ptr'; name: '$name'; size='$size'; isPTR: '$isPTR' */"
+  echo "  /* t: '$t'; ptr: '$ptr'; name: '$name'; size='$size'; isPTR: '$isPTR'; isStruct: '$isStruct' */"
   if [[ "$isPTR" == 'true' ]]; then
     echo "  ret->length = snprintf( NULL, 0, \"%lu\", (unsigned long int)$name );"
     echo "  ret->data   = malloc( ret->length + 1 );"
@@ -40,7 +44,7 @@ BASHBinding::bbind_genCast2Char() {
           # single char
           echo "  ret->length = sizeof( char );"
           echo '  ret->data   = malloc( ret->length );'
-          echo "  *ret->data  = ${ptr}${name}"
+          echo "  *ret->data  = ${ptr}${name};"
           return
         else
           # string
@@ -59,6 +63,8 @@ BASHBinding::bbind_genCast2Char() {
         int) [[ "$snprintfType" != *"u" ]] && snprintfType="${snprintfType/%i}i" ;;
       esac
     done
+
+    [[ "$isStruct" == '2' ]] && snprintfType="i"
 
     if [ -z "$size" ]; then
       echo "  ret->length = snprintf( NULL, 0, \"%$snprintfType\", ${ptr}${name} );"
@@ -125,7 +131,7 @@ struct workerEnd<false, T> {
 };
 
 template <typename T, int N>
-struct worker<false, T, N> : workerEnd<std::is_fundamental<T>::value, T> {
+struct worker<false, T, N> : workerEnd<std::is_fundamental<T>::value && !std::is_void<T>::value, T> {
   typedef T type;
   static const int counter = N;
 };
@@ -195,6 +201,9 @@ int main() {
         case LDOUBLE: append( str, "long double" );   break;
       }
     }
+  } else if ( std::is_enum<type>::value ) {
+    std::cout << "$t" << std::endl;
+    return 2;
   } else {
     // struct
     std::cout << "$t" << std::endl;
