@@ -111,6 +111,7 @@ vec1 destruct
 | . [func] [options] | Calls [func] with [options]                                  |
 | . [attr]           | Prints value of [attr] to stdout                             |
 | . [attr] [value]   | Sets [attr] to [value]                                       |
+| : [attr] [var]     | Stores [attr] in [var]                                       |
 | name               | Prints the object name to stdout                             |
 | classname          | Prints the class name to stdout                              |
 | hasFunc [func]     | Returns 0 if class has the function [func]                   |

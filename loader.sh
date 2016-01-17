@@ -4,7 +4,7 @@ shopt -s extglob
 
 loadBashUtils() {
   local i j
-  for i in ooBASH utilFunctions bindings; do
+  for i in ooBASH utilFunctions bindings bCurses; do
     for j in "$(dirname "${BASH_SOURCE[0]}")/$i/"*.sh; do
       source "$j"
     done
