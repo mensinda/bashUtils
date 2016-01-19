@@ -155,7 +155,9 @@ bCurses::startLoop() {
         c="$i"
         break
       done
-      [[ "$str" == $'\x1b' && "$c" == "" ]] && c="ESC"
+      [[ "$str" == $'\x1b'   && "$c" == "" ]] && c="ESC"
+      [[ "$str" == $'\x1b[H' && "$c" == "" ]] && c="khome"
+      [[ "$str" == $'\x1b[F' && "$c" == "" ]] && c="kend"
       [[ "$c" == "" ]] && c="!${str:1}"
     fi
 

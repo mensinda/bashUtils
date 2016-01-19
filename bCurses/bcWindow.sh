@@ -7,11 +7,15 @@ class bcWindow
 
     -- fgColor
     -- bgColor
+    -- shadowColor
 
     -- posX
     -- posY
     -- width
     -- height
+
+    -- shadowOX
+    -- shadowOY
 
     -- updated
 
@@ -26,6 +30,14 @@ class bcWindow
     :: setPos
     :: setSize
 
+    :: setShadow
+
+    :: getPos
+    :: getSize
+
+    :: resizeFullscreen
+    :: center
+
     :: append
 
     :: draw
@@ -33,10 +45,15 @@ class bcWindow
 ssalc
 
 bcWindow::bcWindow() {
-  argsRequired 6 $#
+  (( $# != 2 )) && argsRequired 6 $#
 
   $1 . parent  "$2"
   $2 . append "$($1 name)"
+
+  $1 . shadowOX 0
+  $1 . shadowOY 0
+
+  (( $# == 2 )) && return
 
   $1 . setPos  "$3" "$4"
   $1 . setSize "$5" "$6"
@@ -51,15 +68,25 @@ bcWindow::append() {
 
 bcWindow::genWinSTR() {
   $1 . updated false
-  local i j str fgColor bgColor width height posX posY
+  local i j str fgColor bgColor posShadowX shadowColor width height posX posY shadowOX shadowOY
 
   # Store class vars in local vars
-  for i in fgColor bgColor posX posY width height; do
+  for i in fgColor bgColor shadowColor posX posY width height shadowOX shadowOY; do
+    local $i
     $1 : $i $i
   done
 
-  # Clear the screen
-  str="${fgColor}${bgColor}"
+  (( posShadowX = posX + shadowOX ))
+
+  if (( shadowOY != 0 || shadowOX != 0 )); then
+    str="$shadowColor"
+    for (( i=0; i < height; i++ )); do
+      (( j = i + posY + shadowOY ))
+      str="${str}\x1b[${j};${posShadowX}f\x1b[${width}X"
+    done
+  fi
+
+  str="${str}${fgColor}${bgColor}"
 
   for (( i=0; i < height; i++ )); do
     (( j = i + posY ))
@@ -98,6 +125,38 @@ bcWindow::setSize() {
   $1 . updated true
 }
 
+bcWindow::setShadow() {
+  argsRequired 4 $#
+
+  case "$2" in
+    black|BLACK|Black)       $1 . shadowColor "\x1b[40m" ;; # 3x fg; 4x bg
+    red|RED|Red)             $1 . shadowColor "\x1b[41m" ;;
+    green|GREEN|Green)       $1 . shadowColor "\x1b[42m" ;;
+    yellow|YELLOW|Yellow)    $1 . shadowColor "\x1b[43m" ;;
+    blue|BLUE|Blue)          $1 . shadowColor "\x1b[44m" ;;
+    magenta|MAGENTA|Magenta) $1 . shadowColor "\x1b[45m" ;;
+    cyan|CYAN|Cyan)          $1 . shadowColor "\x1b[46m" ;;
+    white|WHITE|White)       $1 . shadowColor "\x1b[47m" ;;
+    *) $1 . shadowColor "\x1b[48;${2}m" ;;
+  esac
+
+  $1 . shadowOX "$3"
+  $1 . shadowOY "$4"
+  $1 . updated true
+}
+
+bcWindow::resizeFullscreen() {
+  $1 . setPos  1 1
+  $1 . setSize "$COLUMNS" "$LINES"
+}
+
+bcWindow::center() {
+  local w h
+  $1 : width  w
+  $1 : height h
+  $1 . setPos $(( COLUMNS / 2 - w / 2 )) $(( LINES / 2 - h / 2 ))
+}
+
 bcWindow::setColors() {
   argsRequired 3 $#
 
@@ -123,6 +182,19 @@ bcWindow::setColors() {
   done
   $1 . updated true
 }
+
+bcWindow::getPos() {
+  argsRequired 3 $#
+  $1 : posX $2
+  $1 : posY $3
+}
+
+bcWindow::getSize() {
+  argsRequired 3 $#
+  $1 : width  $2
+  $1 : height $3
+}
+
 
 bcWindow::draw() {
   argsRequired 1 $#

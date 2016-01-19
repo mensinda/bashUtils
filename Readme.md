@@ -180,6 +180,25 @@ Buttons:
 |  WD    | Wheel down                    |
 |  REL   | *ANY* button (MB*) released   |
 
+## bcWindow
+
+|                Methode               |                                   Description                                   |
+|--------------------------------------|---------------------------------------------------------------------------------|
+| CONSTRUCTOR [parent] {x} {y} {w} {h} | appends to [parent] and runs setPos {x} {y} and setSize {w} {h}                 |
+| setColors [fg] [bg]                  | sets the [fg] and [bg] color. Colors can be a string or "5;n" with n in [0,255] |
+| setPos [posX] [posY]                 | sets the absolute position                                                      |
+| setSize [width] [height]             | sets the size of the window                                                     |
+| setShadow [color] [offX] [offY]      | sets color and offset of the shadow; offset 0 0 to disable                      |
+| draw                                 | draws the window and all children                                               |
+| resizeFullscreen                     | make the window cover the entire terminal                                       |
+| center                               | centers the window vertically and horizontally                                  |
+| append [child]                       | appends a drawable [child]; normally called by a constructor                    |
+| getPos [posX] [posY]                 | saves the current position in the variables [posX] and [posY]                   |
+| getSize [width] [height]             | saves the current size in the variables [width] and [height]                    |
+
+
+Note: all coordinates start with 1, 1. NOT 0, 0
+
 # Bash C bindings
 
 bashUtils provides a (base) class to create bindings for c-style functions and callbacks via c-style function pointers.
