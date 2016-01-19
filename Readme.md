@@ -10,6 +10,7 @@ NOTE: Some functions use global variables. Variable names starting with `__CLASS
  - [Object Oriented BASH](#object-oriented-bash)
    - [Example](#example)
    - [Object operators](#object-operators)
+ - [Bash Curses](#bash-curses)
  - [Bash C bindings](#bash-c-bindings)
    - [WARNING - read this](#warning-warning-warning)
    - [Function definition file Syntax](#function-definition-file-syntax)
@@ -118,6 +119,66 @@ vec1 destruct
 | hasAttr [attr]     | Returns 0 if class has the attribute [attr]                  |
 | isVisible [a/f]    | Returns 0 if the attribute / function is *currently* visible |
 | destruct           | Destructs the object and runs the (optional) destructor      |
+
+# Bash Curses
+
+bashUtils provides classes to read and parse the terminfo file for the current terminal and create
+ncurses like windows and mouse input.
+
+## bTermInfo
+
+The class `bTermInfo` is responsible for loading the terminfo file and setting the `COLUMNS` and
+`LINES` environment variables.
+
+All parsed data can be accessed via `<objectName> . <CapName>`. All CapNames are listed in the terminfo manpage.
+
+|      Methode     |                        Description                       |
+|------------------|----------------------------------------------------------|
+| CONSTRUCTOR      | calls `updateScreenSize` and `loadTIfile`                |
+| updateScreenSize | (re)sets the `COLUMNS` and `LINES` environment variables |
+| loadTIfile       | (re)parses the terminfo file                             |
+
+## bCurses
+
+The main / init class.
+
+|              Methode             |                               Description                               |
+|----------------------------------|-------------------------------------------------------------------------|
+| CONSTRUCTOR [TI]                 | loads information from the [TI] bTermInfo object                        |
+| hideCursor                       | hides the cursor (default)                                              |
+| showCursor                       | shows the cursor                                                        |
+| append [child]                   | appends a drawable [child] (needs draw methode)                         |
+| draw                             | draws all children                                                      |
+| updateScreenSize                 | runns the updateScreenSize from bTermInfo                               |
+| startLoop [key] [mouse] [resize] | starts the input loop; sends events to [key] [mouse] [resize] functions |
+| stopLoop                         | stops the input loop                                                    |
+| init                             | saves current state; clears the window; enables mouse support           |
+| reset                            | restores the terminal state before init                                 |
+
+### The key callback
+
+Special key names are the CapNames from the terminfo manpage.
+
+### The mouse callback
+
+Parameters:
+
+| Parameters |           Description          |
+|------------|--------------------------------|
+|    arg1    | Pressed button (or "released") |
+|    arg2    | X coordinate                   |
+|    arg2    | Y coordinate                   |
+
+Buttons:
+
+| Button |          Description          |
+|--------|-------------------------------|
+|  MB1   | Mouse button 1 (left click)   |
+|  MB2   | Mouse button 2 (middle click) |
+|  MB3   | Mouse button 3 (right click)  |
+|  WU    | Wheel up                      |
+|  WD    | Wheel down                    |
+|  REL   | *ANY* button (MB*) released   |
 
 # Bash C bindings
 

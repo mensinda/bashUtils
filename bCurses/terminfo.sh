@@ -70,6 +70,9 @@ class bTermInfo
     :: loadTIfile
     :: updateScreenSize
 
+    -- setBool
+    -- setNum
+    -- setSTR
 
 __INTERNAL_setUp_Terminfo_Vars
 
@@ -97,7 +100,6 @@ bTermInfo::bTermInfo() {
 bTermInfo::updateScreenSize() {
   COLUMNS=$(tput cols)
   LINES=$(tput lines)
-  export COLUMNS LINES
 }
 
 
@@ -135,7 +137,7 @@ bTermInfo::hex2String() {
 }
 
 bTermInfo::loadTIfile() {
-  local temp result i contentHex str
+  local temp result i contentHex str setBool setNum setSTR
 
   contentHex="$(hexdump -ve '1/1 "%.2x"' "$($1 . tiFile)")"
 
@@ -161,6 +163,7 @@ bTermInfo::loadTIfile() {
     temp="${__INTERNAL_boolNames[$i]}"
     bTermInfo::readBool result
     $1 . "$temp" "$result"
+    setBool="$setBool $temp"
   done
 
   # Skip null byte
@@ -177,6 +180,7 @@ bTermInfo::loadTIfile() {
     temp="${__INTERNAL_numNames[$i]}"
     bTermInfo::readShortInt result
     $1 . "$temp" "$result"
+    setNum="$setNum $temp"
   done
 
   # Parse string section
@@ -193,8 +197,12 @@ bTermInfo::loadTIfile() {
     str="${contentHex:${offsets[$i]}}"
     bTermInfo::hex2String str result
     $1 . "$temp" "$result"
-    echo -e "$temp\t'$result'" >> t.txt
+    setSTR="$setSTR $temp"
   done
+
+  $1 . setBool "$setBool"
+  $1 . setNum  "$setNum"
+  $1 . setSTR  "$setSTR"
 
   return
 }

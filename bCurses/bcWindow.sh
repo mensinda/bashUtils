@@ -15,6 +15,8 @@ class bcWindow
 
     -- updated
 
+    -- children
+
     :: genWinSTR
 
   public:
@@ -24,6 +26,8 @@ class bcWindow
     :: setPos
     :: setSize
 
+    :: append
+
     :: draw
 
 ssalc
@@ -32,11 +36,17 @@ bcWindow::bcWindow() {
   argsRequired 6 $#
 
   $1 . parent  "$2"
-  $2 . updateScreenSize
   $2 . append "$($1 name)"
 
   $1 . setPos  "$3" "$4"
   $1 . setSize "$5" "$6"
+}
+
+bcWindow::append() {
+  argsRequired 2 $#
+  local t
+  $1 : children t
+  $1 . children "$t $2"
 }
 
 bcWindow::genWinSTR() {
@@ -116,9 +126,14 @@ bcWindow::setColors() {
 
 bcWindow::draw() {
   argsRequired 1 $#
-  local t
+  local t i
   $1 : updated t
   [[ "$t" == "true" ]] && $1 . genWinSTR
   $1 : windowSTR t
   echo -ne "$t"
+
+  $1 : children t
+  for i in $t; do
+    $i . draw
+  done
 }

@@ -9,17 +9,21 @@ class bCurses
 
     -- children
 
+    -- inputLoopRunning
+
   public:
     :: bCurses
 
     :: hideCursor
     :: showCursor
-    :: colors
 
     :: append
     :: draw
 
     :: updateScreenSize
+
+    :: startLoop
+    :: stopLoop
 
     :: init
     :: reset
@@ -72,25 +76,93 @@ bCurses::showCursor() {
 }
 
 bCurses::init() {
+  stty -echo
   # \x1b[?1049h  -- save term
   # \x1b[?1000h  -- mouse on
   # \x1b[?25l    -- hide cursor
   # \x1b[3k      -- clear term
 
-  echo -ne "\x1b[?1049h\x1b[?1000h\x1b[?25l\x1b[2J\x1b[3J\x1b[1;1f"
+  echo -ne "\x1b[?1049;1000h\x1b[?25l\x1b[2J\x1b[3J\x1b[1;1f"
 }
 
 bCurses::reset() {
+  stty echo
   # \x1b[?1049l  -- restore term
   # \x1b[?1000l  -- mouse off
   # \x1b[?25h    -- show cursor
 
-  echo -ne "\x1b[?1049l\x1b[?1000l\x1b[?25h\x1b[39;49m"
+  echo -ne "\x1b[?1049;1000l\x1b[?25h\x1b[39;49m"
 }
 
-bCurses::colors() {
-  local i
-  for (( i=0; i<256; i++ )); do
-    echo -ne "\x1b[48;5;${i}m  "
+bCurses::startLoop() {
+  argsRequired 4 $#
+  $1 . inputLoopRunning true
+
+  local c button posX posY str running ti i setSTR keys
+
+  # Load keycodes int local vars
+  $1  : termInfo ti
+  $ti : setSTR setSTR
+
+  for i in $setSTR; do
+    [[ "${i:0:1}" != 'k' ]] && continue
+    keys="$keys $i"
+    eval "local $i"
+    $ti : $i $i
   done
+
+  while true; do
+    $1 : inputLoopRunning running
+    [[ "$running" != 'true' ]] && break
+
+    # check resize
+    posX=$COLUMNS
+    posY=$LINES
+    $ti . updateScreenSize
+    (( posX != COLUMNS || posY != LINES )) && $4
+
+    IFS= read -r -N1 -t 1 c
+    (( $? != 0 )) && continue
+
+    if [[ "$c" == $'\x1b' ]]; then
+      str="$c"
+      while IFS= read -r -N1 -t 0.001 c; do
+        str="${str}${c}"
+      done
+
+      if [[ "${str:0:3}" == $'\x1b[M' ]]; then
+        button="$( LC_CTYPE=C printf '%d' "'${str:3:1}" )"
+        posX="$(   LC_CTYPE=C printf '%d' "'${str:4:1}" )"
+        posY="$(   LC_CTYPE=C printf '%d' "'${str:5:1}" )"
+        (( posX -= 32 ))
+        (( posY -= 32 ))
+
+        if (( (button & 64) != 0 )); then
+          (( (button & 3) == 0 )) && button='WU'
+          (( (button & 3) == 1 )) && button='WD'
+        elif (( (button & 3) != 3 )); then
+          button="MB$(( (button & 3) + 1 ))"
+        else
+          button="REL"
+        fi
+
+        $3 "$button" "$posX" "$posY"
+        continue
+      fi
+
+      for i in $keys; do
+        [[ "${!i}" != "$str" ]] && continue
+        c="$i"
+        break
+      done
+      [[ "$str" == $'\x1b' && "$c" == "" ]] && c="ESC"
+      [[ "$c" == "" ]] && c="!${str:1}"
+    fi
+
+    $2 "$c"
+  done
+}
+
+bCurses::stopLoop() {
+  $1 . inputLoopRunning false
 }
