@@ -189,6 +189,10 @@ Buttons:
 | setPos [posX] [posY]                 | sets the absolute position                                                      |
 | setSize [width] [height]             | sets the size of the window                                                     |
 | setShadow [color] [offX] [offY]      | sets color and offset of the shadow; offset 0 0 to disable                      |
+| setBorder [borderSTR]                | sets a border (see borderSTR section); empty string for no border               |
+| setBorderNormal                      | sets the default border string 1                                                |
+| setBorderThick                       | sets the default border string 2                                                |
+| setBorderDouble                      | sets the default border string 3                                                |
 | draw                                 | draws the window and all children                                               |
 | resizeFullscreen                     | make the window cover the entire terminal                                       |
 | center                               | centers the window vertically and horizontally                                  |
@@ -196,8 +200,28 @@ Buttons:
 | getPos [posX] [posY]                 | saves the current position in the variables [posX] and [posY]                   |
 | getSize [width] [height]             | saves the current size in the variables [width] and [height]                    |
 
-
 Note: all coordinates start with 1, 1. NOT 0, 0
+
+## borderSTR
+
+| Char |       Description       |
+|------|-------------------------|
+|  0   | Upper Horizontal border |
+|  1   | Lower Horizontal border |
+|  2   | Left Vertical border    |
+|  3   | Right Vertical border   |
+|  4   | Upper left corner       |
+|  5   | Upper right corner      |
+|  6   | Lower left corner       |
+|  7   | Lower right corner      |
+
+```
+4000000000005
+2           3
+2           3
+2           3
+6111111111117
+```
 
 # Bash C bindings
 
