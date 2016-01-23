@@ -1,38 +1,21 @@
 #!/bin/bash
 
-class bcWindow
+declare -f "bcBase" &> /dev/null || source "${BASH_SOURCE%/*}/bcBase.sh"
+
+class bcWindow bcBase
   private:
-    -- windowSTR
-    -- parent
-
-    -- fgColor
-    -- bgColor
     -- shadowColor
-
-    -- posX
-    -- posY
-    -- width
-    -- height
 
     -- shadowOX
     -- shadowOY
 
     -- borderChars
 
-    -- updated
-    -- visible
-
-    -- children
-
     :: genWinSTR
 
   public:
     :: bcWindow
-
-    :: setColors
-    :: setPos
-    :: setPosRel
-    :: setSize
+    :: draw
 
     :: setShadow
 
@@ -40,45 +23,28 @@ class bcWindow
     :: setBorderNormal
     :: setBorderThick
     :: setBorderDouble
-
-    :: getPos
-    :: getSize
-
-    :: resizeFullscreen
-    :: center
-    :: centerRel
-
-    :: hide
-    :: show
-    :: getIsVisible
-
-    :: append
-
-    :: draw
-
 ssalc
 
 bcWindow::bcWindow() {
   (( $# != 2 )) && argsRequired 6 $#
 
+  local fgColor bgColor
+
   $1 . parent  "$2"
   $2 . append "$($1 name)"
+  $2 . getColorSTR fgColor bgColor
 
   $1 . shadowOX 0
   $1 . shadowOY 0
-  $1 . visible  true
+
+  $1 . fgColor "$fgColor"
+  $1 . bgColor "$bgColor"
+  $1 . show
 
   (( $# == 2 )) && return
 
   $1 . setPos  "$3" "$4"
   $1 . setSize "$5" "$6"
-}
-
-bcWindow::append() {
-  argsRequired 2 $#
-  local t
-  $1 : children t
-  $1 . children "$t $2"
 }
 
 bcWindow::genWinSTR() {
@@ -122,64 +88,14 @@ bcWindow::genWinSTR() {
   fi
 
   str="${str}\x1b[0m"
-  $1 . windowSTR "$str"
+  $1 . terminalSTR "$str"
 }
 
-bcWindow::setPos() {
-  argsRequired 3 $#
+bcWindow::draw() {
+  $1 : updated t
+  [[ "$t" == "true" ]] && $1 . genWinSTR
 
-  local x=$2 y=$3
-
-  (( x > COLUMNS )) && x=$COLUMNS
-  (( y > LINES   )) && y=$LINES
-
-  $1 . posX $x
-  $1 . posY $y
-  $1 . updated true
-}
-
-bcWindow::setPosRel() {
-  local x y p
-  $1 : parent p
-
-  $p . getPos x y
-  (( x += $2 ))
-  (( y += $3 ))
-
-  (( x > COLUMNS )) && x=$COLUMNS
-  (( y > LINES   )) && y=$LINES
-
-  $1 . posX $x
-  $1 . posY $y
-  $1 . updated true
-}
-
-bcWindow::setSize() {
-  argsRequired 3 $#
-
-  local x y w=$2 h=$3
-  $1 : posX x
-  $1 : posY y
-
-  (( (w + x) > COLUMNS + 1 )) && w=$(( $COLUMNS - x + 1 ))
-  (( (h + y) > LINES   + 1 )) && h=$(( $LINES   - y + 1 ))
-
-  $1 . width  $w
-  $1 . height $h
-  $1 . updated true
-}
-
-bcWindow::hide() {
-  $1 . visible false
-}
-
-bcWindow::show() {
-  $1 . visible true
-}
-
-bcWindow::getIsVisible() {
-  argsRequired 2 $#
-  $1 : visible $2
+  $1 . drawObjectAndChildren
 }
 
 bcWindow::setShadow() {
@@ -223,81 +139,4 @@ bcWindow::setBorderThick() {
 bcWindow::setBorderDouble() {
   $1 . borderChars $'\u2550\u2550\u2551\u2551\u2554\u2557\u255A\u255D'
   $1 . updated true
-}
-
-bcWindow::resizeFullscreen() {
-  $1 . setPos  1 1
-  $1 . setSize "$COLUMNS" "$LINES"
-}
-
-bcWindow::center() {
-  local w h
-  $1 : width  w
-  $1 : height h
-  $1 . setPos $(( COLUMNS / 2 - w / 2 )) $(( LINES / 2 - h / 2 ))
-}
-
-bcWindow::centerRel() {
-  local w h p pX pY pW pH
-  $1 : parent p
-  $1 : width  w
-  $1 : height h
-  $p . getPos  pX pY
-  $p . getSize pW pH
-  $1 . setPos $(( pX + pW / 2 - w / 2 )) $(( pY + pH / 2 - h / 2 ))
-}
-
-bcWindow::setColors() {
-  argsRequired 3 $#
-
-  local i j=2
-
-  for i in fgColor bgColor; do
-    if [ -n "${!j}" ]; then
-      case "${!j}" in
-        black|BLACK|Black)       $1 . $i "\x1b[$((j+1))0m" ;; # 3x fg; 4x bg
-        red|RED|Red)             $1 . $i "\x1b[$((j+1))1m" ;;
-        green|GREEN|Green)       $1 . $i "\x1b[$((j+1))2m" ;;
-        yellow|YELLOW|Yellow)    $1 . $i "\x1b[$((j+1))3m" ;;
-        blue|BLUE|Blue)          $1 . $i "\x1b[$((j+1))4m" ;;
-        magenta|MAGENTA|Magenta) $1 . $i "\x1b[$((j+1))5m" ;;
-        cyan|CYAN|Cyan)          $1 . $i "\x1b[$((j+1))6m" ;;
-        white|WHITE|White)       $1 . $i "\x1b[$((j+1))7m" ;;
-        *) $1 . $i "\x1b[$((j+1))8;${!j}m" ;;
-      esac
-    else
-      $1 . $i ''
-    fi
-    (( j++ ))
-  done
-  $1 . updated true
-}
-
-bcWindow::getPos() {
-  argsRequired 3 $#
-  $1 : posX $2
-  $1 : posY $3
-}
-
-bcWindow::getSize() {
-  argsRequired 3 $#
-  $1 : width  $2
-  $1 : height $3
-}
-
-
-bcWindow::draw() {
-  argsRequired 1 $#
-  local t i visible
-  $1 : visible visible
-  [[ "$visible" != 'true' ]] && return
-  $1 : updated t
-  [[ "$t" == "true" ]] && $1 . genWinSTR
-  $1 : windowSTR t
-  echo -ne "$t"
-
-  $1 : children t
-  for i in $t; do
-    $i . draw
-  done
 }

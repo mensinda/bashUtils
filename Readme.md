@@ -182,33 +182,41 @@ Buttons:
 |  WD    | Wheel down                    |
 |  REL   | *ANY* button (MB*) released   |
 
-## bcWindow
+## bcBase
+
+Base class for all objects
+
+|                Methode               |                                   Description                                   |
+|--------------------------------------|---------------------------------------------------------------------------------|
+| setColors [fg] [bg]                  | sets the [fg] and [bg] color. Colors can be a string or "5;n" with n in [0,255] |
+| setPos [posX] [posY]                 | sets the absolute position                                                      |
+| setPosRel [posX] [posY]              | sets the position relative to the parent object                                 |
+| setSize [width] [height]             | sets the size of the object                                                     |
+| resizeFullscreen                     | make the object cover the entire terminal                                       |
+| center                               | centers the object vertically and horizontally                                  |
+| centerRel                            | centers the object vertically and horizontally relative to the parent object    |
+| hide                                 | hides the object and all its children                                           |
+| show                                 | makes the object visible                                                        |
+| append [child]                       | appends a drawable [child]; normally called by a constructor                    |
+| getPos [posX] [posY]                 | saves the current position in the variables [posX] and [posY]                   |
+| getSize [width] [height]             | saves the current size in the variables [width] and [height]                    |
+| getColorSTR [fg] [bg]                | saves the current color strings in the variables [fg] and [bg]                  |
+
+## bcWindow (bcBase object)
 
 |                Methode               |                                   Description                                   |
 |--------------------------------------|---------------------------------------------------------------------------------|
 | CONSTRUCTOR [parent] {x} {y} {w} {h} | appends to [parent] and runs setPos {x} {y} and setSize {w} {h}                 |
-| setColors [fg] [bg]                  | sets the [fg] and [bg] color. Colors can be a string or "5;n" with n in [0,255] |
-| setPos [posX] [posY]                 | sets the absolute position                                                      |
-| setPosRel [posX] [posY]              | sets the position relative to the parent window                                 |
-| setSize [width] [height]             | sets the size of the window                                                     |
 | setShadow [color] [offX] [offY]      | sets color and offset of the shadow; offset 0 0 to disable                      |
 | setBorder [borderSTR]                | sets a border (see borderSTR section); empty string for no border               |
 | setBorderNormal                      | sets the default border string 1                                                |
 | setBorderThick                       | sets the default border string 2                                                |
 | setBorderDouble                      | sets the default border string 3                                                |
 | draw                                 | draws the window and all children                                               |
-| resizeFullscreen                     | make the window cover the entire terminal                                       |
-| center                               | centers the window vertically and horizontally                                  |
-| centerRel                            | centers the window vertically and horizontally relative to the parent window    |
-| hide                                 | hides the window and all its children                                           |
-| show                                 | makes the window visible                                                        |
-| append [child]                       | appends a drawable [child]; normally called by a constructor                    |
-| getPos [posX] [posY]                 | saves the current position in the variables [posX] and [posY]                   |
-| getSize [width] [height]             | saves the current size in the variables [width] and [height]                    |
 
 Note: all coordinates start with 1, 1. NOT 0, 0
 
-## borderSTR
+### borderSTR
 
 | Char |       Description       |
 |------|-------------------------|
@@ -228,6 +236,31 @@ Note: all coordinates start with 1, 1. NOT 0, 0
 2           3
 6111111111117
 ```
+
+## bcText (bcBase object)
+
+|                Methode               |                                   Description                                   |
+|--------------------------------------|---------------------------------------------------------------------------------|
+| CONSTRUCTOR [parent] {x} {y}         | appends to [parent] and runs setPosRel {x} {y}                                  |
+| setText [t1] ... [tn]                | sets the text. Replaces all args with "@<attr>@" with terminal escape sequences |
+| draw                                 | draws the text and all children                                                 |
+
+### list of attributes
+
+ - off
+ - bold
+ - italic         
+ - underline
+ - blink           
+ - inverse      
+ - black            
+ - red               
+ - green            
+ - yellow         
+ - blue              
+ - magenta      
+ - cyan              
+ - white            
 
 # Bash C bindings
 

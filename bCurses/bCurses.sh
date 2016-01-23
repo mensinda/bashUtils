@@ -27,6 +27,7 @@ class bCurses
 
     :: getPos
     :: getSize
+    :: getColorSTR
 
     :: init
     :: reset
@@ -168,16 +169,22 @@ bCurses::startLoop() {
   done
 }
 
-bcWindow::getPos() {
+bCurses::getPos() {
   argsRequired 3 $#
   eval "$2=1"
   eval "$3=1"
 }
 
-bcWindow::getSize() {
+bCurses::getSize() {
   argsRequired 3 $#
   eval "$2=$COLUMNS"
   eval "$3=$LINES"
+}
+
+bCurses::getColorSTR() {
+  argsRequired 3 $#
+  eval "$2=''"
+  eval "$3=''"
 }
 
 bCurses::stopLoop() {

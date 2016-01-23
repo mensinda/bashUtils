@@ -21,7 +21,7 @@ class() {
   eval "__CLASS_${1}_CONSTRUCTION_ORDER=( '$1' )"
 
   for i in "${@:2}"; do
-    declare -f "$func" &> /dev/null || die "Can not extend unkown class '$i'"
+    declare -f "$i" &> /dev/null || die "Can not extend unkown class '$i'"
     eval "__CLASS_${1}_CONSTRUCTION_ORDER+=( \"\${__CLASS_${i}_CONSTRUCTION_ORDER[@]}\" )"
     eval "
       for j in \"\${!__CLASS_${i}_PROPERTIES[@]}\"; do
