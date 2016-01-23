@@ -25,6 +25,9 @@ class bCurses
     :: startLoop
     :: stopLoop
 
+    :: getPos
+    :: getSize
+
     :: init
     :: reset
 ssalc
@@ -163,6 +166,18 @@ bCurses::startLoop() {
 
     $2 "$c"
   done
+}
+
+bcWindow::getPos() {
+  argsRequired 3 $#
+  eval "$2=1"
+  eval "$3=1"
+}
+
+bcWindow::getSize() {
+  argsRequired 3 $#
+  eval "$2=$COLUMNS"
+  eval "$3=$LINES"
 }
 
 bCurses::stopLoop() {

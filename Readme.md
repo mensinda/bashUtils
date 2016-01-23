@@ -152,6 +152,8 @@ The main / init class.
 | updateScreenSize                 | runns the updateScreenSize from bTermInfo                               |
 | startLoop [key] [mouse] [resize] | starts the input loop; sends events to [key] [mouse] [resize] functions |
 | stopLoop                         | stops the input loop                                                    |
+| getPos [x] [y]                   | sets [x] and [y] to 1                                                   |
+| getSize [width] [height]         | sets [width] and [height] to `$CLOUMNS` and `$LINES`                    |
 | init                             | saves current state; clears the window; enables mouse support           |
 | reset                            | restores the terminal state before init                                 |
 
@@ -187,6 +189,7 @@ Buttons:
 | CONSTRUCTOR [parent] {x} {y} {w} {h} | appends to [parent] and runs setPos {x} {y} and setSize {w} {h}                 |
 | setColors [fg] [bg]                  | sets the [fg] and [bg] color. Colors can be a string or "5;n" with n in [0,255] |
 | setPos [posX] [posY]                 | sets the absolute position                                                      |
+| setPosRel [posX] [posY]              | sets the position relative to the parent window                                 |
 | setSize [width] [height]             | sets the size of the window                                                     |
 | setShadow [color] [offX] [offY]      | sets color and offset of the shadow; offset 0 0 to disable                      |
 | setBorder [borderSTR]                | sets a border (see borderSTR section); empty string for no border               |
@@ -196,6 +199,9 @@ Buttons:
 | draw                                 | draws the window and all children                                               |
 | resizeFullscreen                     | make the window cover the entire terminal                                       |
 | center                               | centers the window vertically and horizontally                                  |
+| centerRel                            | centers the window vertically and horizontally relative to the parent window    |
+| hide                                 | hides the window and all its children                                           |
+| show                                 | makes the window visible                                                        |
 | append [child]                       | appends a drawable [child]; normally called by a constructor                    |
 | getPos [posX] [posY]                 | saves the current position in the variables [posX] and [posY]                   |
 | getSize [width] [height]             | saves the current size in the variables [width] and [height]                    |

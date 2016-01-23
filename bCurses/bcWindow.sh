@@ -20,6 +20,7 @@ class bcWindow
     -- borderChars
 
     -- updated
+    -- visible
 
     -- children
 
@@ -30,6 +31,7 @@ class bcWindow
 
     :: setColors
     :: setPos
+    :: setPosRel
     :: setSize
 
     :: setShadow
@@ -44,6 +46,11 @@ class bcWindow
 
     :: resizeFullscreen
     :: center
+    :: centerRel
+
+    :: hide
+    :: show
+    :: getIsVisible
 
     :: append
 
@@ -59,6 +66,7 @@ bcWindow::bcWindow() {
 
   $1 . shadowOX 0
   $1 . shadowOY 0
+  $1 . visible  true
 
   (( $# == 2 )) && return
 
@@ -130,6 +138,22 @@ bcWindow::setPos() {
   $1 . updated true
 }
 
+bcWindow::setPosRel() {
+  local x y p
+  $1 : parent p
+
+  $p . getPos x y
+  (( x += $2 ))
+  (( y += $3 ))
+
+  (( x > COLUMNS )) && x=$COLUMNS
+  (( y > LINES   )) && y=$LINES
+
+  $1 . posX $x
+  $1 . posY $y
+  $1 . updated true
+}
+
 bcWindow::setSize() {
   argsRequired 3 $#
 
@@ -143,6 +167,19 @@ bcWindow::setSize() {
   $1 . width  $w
   $1 . height $h
   $1 . updated true
+}
+
+bcWindow::hide() {
+  $1 . visible false
+}
+
+bcWindow::show() {
+  $1 . visible true
+}
+
+bcWindow::getIsVisible() {
+  argsRequired 2 $#
+  $1 : visible $2
 }
 
 bcWindow::setShadow() {
@@ -200,6 +237,16 @@ bcWindow::center() {
   $1 . setPos $(( COLUMNS / 2 - w / 2 )) $(( LINES / 2 - h / 2 ))
 }
 
+bcWindow::centerRel() {
+  local w h p pX pY pW pH
+  $1 : parent p
+  $1 : width  w
+  $1 : height h
+  $p . getPos  pX pY
+  $p . getSize pW pH
+  $1 . setPos $(( pX + pW / 2 - w / 2 )) $(( pY + pH / 2 - h / 2 ))
+}
+
 bcWindow::setColors() {
   argsRequired 3 $#
 
@@ -241,7 +288,9 @@ bcWindow::getSize() {
 
 bcWindow::draw() {
   argsRequired 1 $#
-  local t i
+  local t i visible
+  $1 : visible visible
+  [[ "$visible" != 'true' ]] && return
   $1 : updated t
   [[ "$t" == "true" ]] && $1 . genWinSTR
   $1 : windowSTR t
